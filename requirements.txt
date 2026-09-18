@@ -1,5 +1,5 @@
-pysus
-pandas
-python-dotenv
-sqlalchemy
-psycopg2-binary
+pysus==2.11.2
+pandas==2.3.3
+python-dotenv==1.2.3
+SQLAlchemy==2.0.54
+psycopg2-binary==2.9.13
