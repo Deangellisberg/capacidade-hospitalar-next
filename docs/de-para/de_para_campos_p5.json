@@ -1,0 +1,682 @@
+{
+  "projeto": "P5 — Capacidade Hospitalar (SERMAC/Recife)",
+  "gerado_em": "2026-09-18",
+  "legenda_tipos": {
+    "texto": "String — inclui códigos, mesmo quando parecem número (preservar zeros à esquerda)",
+    "inteiro": "Número inteiro, requer pd.to_numeric() antes de usar (CNES-LT e SIH-RD chegam como texto)",
+    "data": "Data de calendário — converter do formato bruto pro formato alvo antes de gravar no banco",
+    "codigo_categorico": "Código com significado em tabela de domínio; tratar como texto mesmo se o pandas inferir número"
+  },
+  "tabelas": {
+    "CNES-LT": {
+      "fonte": "PySUS/FTP DATASUS, grupo LT",
+      "campos": [
+        {
+          "nome": "CNES",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Código do estabelecimento de saúde",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "PK",
+          "perguntas_canvas": [
+            "P1",
+            "P4",
+            "P5",
+            "P6"
+          ]
+        },
+        {
+          "nome": "CODUFMUN",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Código do município (filtro Recife = 261160)",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "FK",
+          "perguntas_canvas": [
+            "Recorte"
+          ]
+        },
+        {
+          "nome": "MICR_REG",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Código da microrregião de saúde"
+        },
+        {
+          "nome": "DISTRSAN",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Código do distrito sanitário"
+        },
+        {
+          "nome": "DISTRDM",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Código do distrito administrativo"
+        },
+        {
+          "nome": "TPGESTAO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Tipo de gestão (M/E/D/S)",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "dominio": "M-Municipal / E-Estadual / D-Dupla / S-Sem Gestão"
+        },
+        {
+          "nome": "PF_PJ",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Indica pessoa física ou jurídica"
+        },
+        {
+          "nome": "CPF_CNPJ",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "CPF ou CNPJ do estabelecimento"
+        },
+        {
+          "nome": "NIV_DEP",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Nível de dependência (individual/mantido)"
+        },
+        {
+          "nome": "CNPJ_MAN",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "CNPJ da mantenedora"
+        },
+        {
+          "nome": "ESFERA_A",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Esfera administrativa"
+        },
+        {
+          "nome": "ATIVIDAD",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Código da atividade de ensino/pesquisa"
+        },
+        {
+          "nome": "RETENCAO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Retenção (uso interno CNES)"
+        },
+        {
+          "nome": "NATUREZA",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Natureza (uso interno CNES)"
+        },
+        {
+          "nome": "CLIENTEL",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Código de fluxo de clientela"
+        },
+        {
+          "nome": "TP_UNID",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Tipo de unidade/estabelecimento"
+        },
+        {
+          "nome": "TURNO_AT",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Turno de atendimento"
+        },
+        {
+          "nome": "NIV_HIER",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Nível hierárquico"
+        },
+        {
+          "nome": "TERCEIRO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Indicador de terceirização"
+        },
+        {
+          "nome": "TP_LEITO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Categoria ampla do leito",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "FK",
+          "perguntas_canvas": [
+            "P1",
+            "P5",
+            "P6"
+          ],
+          "dominio": "1=Cirúrgico, 2=Clínico — dom_tipo_leito"
+        },
+        {
+          "nome": "CODLEITO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Especialidade específica do leito",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "PK/FK",
+          "perguntas_canvas": [
+            "P1"
+          ],
+          "dominio": "dom_codigo_leito, 66 códigos"
+        },
+        {
+          "nome": "QT_EXIST",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "object",
+          "descricao": "Quantidade de leitos existentes",
+          "perguntas_canvas": [
+            "P1"
+          ]
+        },
+        {
+          "nome": "QT_CONTR",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "object",
+          "descricao": "Sem uso (campo legado)"
+        },
+        {
+          "nome": "QT_SUS",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "object",
+          "descricao": "Quantidade de leitos disponíveis para o SUS",
+          "perguntas_canvas": [
+            "P1",
+            "P2",
+            "P4"
+          ]
+        },
+        {
+          "nome": "QT_NSUS",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "object",
+          "descricao": "Não documentado no dicionário oficial consultado"
+        },
+        {
+          "nome": "COMPETEN",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Competência do arquivo",
+          "formato_bruto": "AAAAMM",
+          "formato_alvo": "AAAAMM (manter como texto, não é data de calendário completa)",
+          "chave": "PK",
+          "perguntas_canvas": [
+            "P1",
+            "P4",
+            "P6"
+          ]
+        },
+        {
+          "nome": "NAT_JUR",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Código da natureza jurídica do estabelecimento",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "FK"
+        }
+      ]
+    },
+    "Hospitais_e_Leitos_MS": {
+      "fonte": "dadosabertos.saude.gov.br/dataset/hospitais-e-leitos",
+      "campos": [
+        {
+          "nome": "COMP",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "Competência (AAAAMM)",
+          "formato_bruto": "AAAAMM (numérico)",
+          "formato_alvo": "AAAAMM (manter como texto no banco, apesar de vir int64)",
+          "chave": "PK",
+          "perguntas_canvas": [
+            "P1",
+            "P6"
+          ]
+        },
+        {
+          "nome": "CNES",
+          "tipo": "texto",
+          "tipo_pandas_observado": "int64",
+          "descricao": "Código do estabelecimento",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "PK/FK",
+          "perguntas_canvas": [
+            "P1",
+            "P5",
+            "P6"
+          ]
+        },
+        {
+          "nome": "REGIAO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Região do Brasil",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)"
+        },
+        {
+          "nome": "UF",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Sigla do estado",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)"
+        },
+        {
+          "nome": "CO_IBGE",
+          "tipo": "texto",
+          "tipo_pandas_observado": "int64",
+          "descricao": "Código do município (IBGE)",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "FK",
+          "perguntas_canvas": [
+            "Recorte"
+          ]
+        },
+        {
+          "nome": "MUNICIPIO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Nome do município — único filtro geográfico disponível no arquivo de 2024 (JSON)",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)"
+        },
+        {
+          "nome": "MOTIVO_DESABILITACAO",
+          "tipo": "codigo_categorico",
+          "tipo_pandas_observado": "float64",
+          "descricao": "Motivo de desabilitação do estabelecimento, se houver",
+          "observacao": "dtype real é float64 por causa dos muitos nulos (NaN) — não é decimal de verdade, é código."
+        },
+        {
+          "nome": "NOME_ESTABELECIMENTO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Nome fantasia do hospital",
+          "perguntas_canvas": [
+            "Todas — identificação"
+          ]
+        },
+        {
+          "nome": "RAZAO_SOCIAL",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Razão social — usada para derivar hospitais da Prefeitura"
+        },
+        {
+          "nome": "TP_GESTAO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "M/E/D/S — esfera de gestão",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "dominio": "Não equivale a 'gestão própria' da SERMAC"
+        },
+        {
+          "nome": "CO_TIPO_UNIDADE",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "Código do tipo de unidade"
+        },
+        {
+          "nome": "DS_TIPO_UNIDADE",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Descrição do tipo de unidade"
+        },
+        {
+          "nome": "NATUREZA_JURIDICA",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "Código da natureza jurídica",
+          "chave": "FK"
+        },
+        {
+          "nome": "DESC_NATUREZA_JURIDICA",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Descrição da natureza jurídica"
+        },
+        {
+          "nome": "NO_LOGRADOURO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Logradouro — não usado pelo Canvas"
+        },
+        {
+          "nome": "NU_ENDERECO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Número do endereço — não usado pelo Canvas"
+        },
+        {
+          "nome": "NO_COMPLEMENTO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Complemento — não usado pelo Canvas"
+        },
+        {
+          "nome": "NO_BAIRRO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Bairro — não usado pelo Canvas"
+        },
+        {
+          "nome": "CO_CEP",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "CEP — não usado pelo Canvas"
+        },
+        {
+          "nome": "NU_TELEFONE",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Telefone — não usado pelo Canvas"
+        },
+        {
+          "nome": "NO_EMAIL",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "E-mail — não usado pelo Canvas"
+        },
+        {
+          "nome": "LEITOS_EXISTENTES",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "Total de leitos existentes (não separa clínico/cirúrgico)",
+          "perguntas_canvas": [
+            "P1"
+          ]
+        },
+        {
+          "nome": "LEITOS_SUS",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "Total de leitos SUS (não separa clínico/cirúrgico)",
+          "perguntas_canvas": [
+            "P1"
+          ]
+        },
+        {
+          "nome": "UTI_TOTAL_EXIST",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "UTI total existente",
+          "perguntas_canvas": [
+            "P1 (opcional)"
+          ]
+        },
+        {
+          "nome": "UTI_TOTAL_SUS",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "UTI total SUS",
+          "perguntas_canvas": [
+            "P1 (opcional)"
+          ]
+        },
+        {
+          "nome": "UTI_ADULTO_EXIST",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "UTI adulto existente"
+        },
+        {
+          "nome": "UTI_ADULTO_SUS",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "UTI adulto SUS"
+        },
+        {
+          "nome": "UTI_PEDIATRICO_EXIST",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "UTI pediátrico existente"
+        },
+        {
+          "nome": "UTI_PEDIATRICO_SUS",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "UTI pediátrico SUS"
+        },
+        {
+          "nome": "UTI_NEONATAL_EXIST",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "UTI neonatal existente"
+        },
+        {
+          "nome": "UTI_NEONATAL_SUS",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "UTI neonatal SUS"
+        },
+        {
+          "nome": "UTI_QUEIMADO_EXIST",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "UTI queimados existente"
+        },
+        {
+          "nome": "UTI_QUEIMADO_SUS",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "UTI queimados SUS"
+        },
+        {
+          "nome": "UTI_CORONARIANA_EXIST",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "UTI coronariana existente"
+        },
+        {
+          "nome": "UTI_CORONARIANA_SUS",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "int64",
+          "descricao": "UTI coronariana SUS"
+        }
+      ]
+    },
+    "SIH-RD": {
+      "fonte": "PySUS/FTP DATASUS, grupo RD",
+      "observacao": "Lista abaixo cobre os campos usados/citados pelo Canvas. Lista completa (114 campos) no docx dicionario_campos_p5.docx.",
+      "campos": [
+        {
+          "nome": "N_AIH",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Número da AIH (identificador do registro de internação)",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "PK (a confirmar)"
+        },
+        {
+          "nome": "ANO_CMPT",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Ano de competência",
+          "formato_bruto": "AAAA",
+          "chave": "PK (composta, a confirmar)"
+        },
+        {
+          "nome": "MES_CMPT",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Mês de competência",
+          "formato_bruto": "MM",
+          "chave": "PK (composta, a confirmar)"
+        },
+        {
+          "nome": "CGC_HOSP",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "CNPJ do hospital — NÃO é o código CNES",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "FK",
+          "perguntas_canvas": [
+            "P2",
+            "P3",
+            "P4",
+            "P5",
+            "P6"
+          ]
+        },
+        {
+          "nome": "ESPEC",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Especialidade da AIH",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "FK",
+          "perguntas_canvas": [
+            "P2",
+            "P3",
+            "P6"
+          ],
+          "dominio": "dom_especialidade_sih"
+        },
+        {
+          "nome": "IDENT",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Tipo de AIH (1=Normal, 5=Longa permanência)",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "FK",
+          "perguntas_canvas": [
+            "P3"
+          ],
+          "dominio": "dom_tipo_aih"
+        },
+        {
+          "nome": "DT_SAIDA",
+          "tipo": "data",
+          "tipo_pandas_observado": "object",
+          "descricao": "Data de saída do paciente — confirmado, base de cálculo de saídas/ocupação",
+          "formato_bruto": "texto, AAAAMMDD",
+          "formato_alvo": "yyyy-mm-dd",
+          "observacao": "Confirmado com dado real. Converter com pd.to_datetime(col, format='%Y%m%d').",
+          "perguntas_canvas": [
+            "P1",
+            "P2",
+            "P3",
+            "P5",
+            "P6"
+          ]
+        },
+        {
+          "nome": "DT_INTER",
+          "tipo": "data",
+          "tipo_pandas_observado": "object",
+          "descricao": "Data de início da internação — repete-se em continuações de longa permanência",
+          "formato_bruto": "texto, AAAAMMDD",
+          "formato_alvo": "yyyy-mm-dd",
+          "observacao": "Mesma conversão de DT_SAIDA. Repete-se idêntico entre continuações de longa permanência (ver docs/regra_dias_internacao_mes.md).",
+          "perguntas_canvas": [
+            "P3"
+          ]
+        },
+        {
+          "nome": "DIAS_PERM",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "object",
+          "descricao": "Dias de permanência",
+          "perguntas_canvas": [
+            "P3"
+          ]
+        },
+        {
+          "nome": "PROC_REA",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Procedimento realizado (grupo 04 = cirúrgico)",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "FK (parcial)",
+          "perguntas_canvas": [
+            "P5"
+          ]
+        },
+        {
+          "nome": "PROC_SOLIC",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Procedimento solicitado"
+        },
+        {
+          "nome": "MUNIC_RES",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Código do município de residência do paciente",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)"
+        },
+        {
+          "nome": "MUNIC_MOV",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Código do município de movimentação — usado para filtrar Recife",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)",
+          "chave": "FK",
+          "perguntas_canvas": [
+            "Recorte"
+          ]
+        },
+        {
+          "nome": "IDADE",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "object",
+          "descricao": "Idade do paciente"
+        },
+        {
+          "nome": "COD_IDADE",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Unidade de medida da idade",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)"
+        },
+        {
+          "nome": "SEXO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Sexo do paciente",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)"
+        },
+        {
+          "nome": "MORTE",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Indicador de óbito",
+          "observacao": "Código/categoria — manter como texto (zeros à esquerda, comparação exata)"
+        },
+        {
+          "nome": "VAL_TOT",
+          "tipo": "inteiro",
+          "tipo_pandas_observado": "object",
+          "descricao": "Valor total da AIH — não usado pelo Canvas"
+        },
+        {
+          "nome": "DIAG_PRINC",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Diagnóstico principal (CID) — não usado pelo Canvas"
+        },
+        {
+          "nome": "DIAG_SECUN",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Diagnóstico secundário (CID) — não usado pelo Canvas"
+        },
+        {
+          "nome": "RACA_COR",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Raça/cor do paciente — não usado pelo Canvas"
+        },
+        {
+          "nome": "UTI_MES_TO",
+          "tipo": "texto",
+          "tipo_pandas_observado": "object",
+          "descricao": "Dias totais de UTI no mês (usado no notebook da Thaís para separar enfermaria de UTI)"
+        }
+      ]
+    }
+  }
+}
