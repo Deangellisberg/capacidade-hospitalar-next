@@ -27,12 +27,12 @@ URL_HOSPITAIS_BASE = "https://s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/Leito
 def coletar_cnes_lt(ano: int, mes: int) -> pd.DataFrame:
     # Baixa o grupo LT (Leitos) do CNES para PE.
     df = pysus.cnes("PE", ano, mes, group="LT", as_dataframe=True)
-    return df
+    return df # pyright: ignore[reportReturnType]
 
 
 def coletar_sih(ano: int, mes: int) -> pd.DataFrame:
     df = pysus.sih("PE", ano, mes, group="RD", as_dataframe=True)
-    return df
+    return df # pyright: ignore[reportReturnType]
 
 
 def coletar_hospitais_ms(ano: int) -> pd.DataFrame:
