@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+import pyarrow.parquet as pq
 
 # ------------------------------------------------------------------
 #  Consolida arquivos LT, RD (dados/brutos) e MSHL (dados/brutos/complementares) em DataFrames
@@ -84,10 +85,20 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     mshl_colunas = ['COMP', 'CO_IBGE', 'MUNICIPIO', 'CNES', 'NOME_ESTABELECIMENTO', 'RAZAO_SOCIAL', 'LEITOS_EXISTENTES', 'LEITOS_SUS']
 
     print (f"Consolidando arquivos MS/hospitais_leitos da pasta: {pasta_complementar}")
+    # df_mshl = (
+    #     pd.concat((pd.read_parquet(arquivo, columns=mshl_colunas) for arquivo in arquivos_mshl), ignore_index=True)
+    #     if arquivos_mshl
+    #     else pd.DataFrame()
+    # )
+    def ler_mshl(arquivo):
+        existentes = pq.read_schema(arquivo).names
+        return pd.read_parquet(arquivo, columns=[c for c in mshl_colunas if c in existentes])
+
     df_mshl = (
-        pd.concat((pd.read_parquet(arquivo, columns=mshl_colunas) for arquivo in arquivos_mshl), ignore_index=True)
+        pd.concat((ler_mshl(a) for a in arquivos_mshl), ignore_index=True)
+        .reindex(columns=mshl_colunas)
         if arquivos_mshl
-        else pd.DataFrame()
+        else pd.DataFrame(columns=mshl_colunas)
     )
     print (f"Arquivos MSHL encontrados: {len(arquivos_mshl)}")
 
