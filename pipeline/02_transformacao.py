@@ -1,7 +1,15 @@
 from pathlib import Path
 
 import pandas as pd
+import logging
 import pyarrow.parquet as pq
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
 #  Consolida arquivos LT, RD (dados/brutos) e MSHL (dados/brutos/complementares) em DataFrames
@@ -16,7 +24,7 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     pasta_complementar = Path(__file__).resolve().parents[1] / "dados" / "brutos" / "complementares"
     arquivos_mshl = sorted(pasta_complementar.glob("*_recife.parquet"))
 
-    print (f"Consolidando arquivos da pasta: {pasta_brutos}")
+    logger.info(f"Consolidando arquivos da pasta: {pasta_brutos}")
 
     # ------------------------------------------------------------------
     # Lendo os arquivos lt.parquet e concatenando em um DataFrame, apenas com as colunas que nos interessam
@@ -28,7 +36,7 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
         if arquivos_lt
         else pd.DataFrame()
     )
-    print (f"Arquivos LT encontrados: {len(arquivos_lt)}")
+    logger.info(f"Arquivos LT encontrados: {len(arquivos_lt)}")
 
     # Ajustando os tipos de dados das colunas do DataFrame LT
     df_lt = df_lt.astype({	
@@ -53,7 +61,7 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
         else pd.DataFrame()
     )
 
-    print (f"Arquivos RD encontrados: {len(arquivos_rd)}")
+    logger.info(f"Arquivos RD encontrados: {len(arquivos_rd)}")
 
     # Ajustando os tipos de dados das colunas do DataFrame RD
     df_rd = df_rd.astype({
@@ -84,7 +92,7 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     # ------------------------------------------------------------------
     mshl_colunas = ['COMP', 'CO_IBGE', 'MUNICIPIO', 'CNES', 'NOME_ESTABELECIMENTO', 'RAZAO_SOCIAL', 'LEITOS_EXISTENTES', 'LEITOS_SUS']
 
-    print (f"Consolidando arquivos MS/hospitais_leitos da pasta: {pasta_complementar}")
+    logger.info(f"Consolidando arquivos da pasta: {pasta_complementar}")
     # df_mshl = (
     #     pd.concat((pd.read_parquet(arquivo, columns=mshl_colunas) for arquivo in arquivos_mshl), ignore_index=True)
     #     if arquivos_mshl
@@ -100,7 +108,7 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
         if arquivos_mshl
         else pd.DataFrame(columns=mshl_colunas)
     )
-    print (f"Arquivos MSHL encontrados: {len(arquivos_mshl)}")
+    logger.info(f"Arquivos MSHL encontrados: {len(arquivos_mshl)}")
 
     # Ajustando os tipos de dados das colunas do DataFrame MSHL
     df_mshl = df_mshl.astype({
