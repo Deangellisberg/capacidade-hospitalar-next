@@ -22,6 +22,7 @@ CREATE TABLE lista_hospitais_gestao_propria (
     PRIMARY KEY (cnes, origem)
 );
 
+-- 1. DIMENSÃO: ESTABELECIMENTO (MSHL — Hospitais e Leitos / Ministério da Saúde)
 CREATE TABLE dim_estabelecimento (
     cnes                     VARCHAR(10)  NOT NULL,
     competencia              CHAR(6)      NOT NULL,  -- formato AAAAMM
