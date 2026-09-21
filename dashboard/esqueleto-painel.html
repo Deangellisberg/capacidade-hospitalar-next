@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Esqueleto — Painel de Capacidade Hospitalar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+
+    --bg:#F3F6F5;
+    --paper:#FFFFFF;
+    --ink:#122A25;
+    --ink-soft:#4B615D;
+    --line:#DAE3E0;
+    --teal:#1F6F63;
+    --teal-deep:#123F38;
+    --teal-tint:#E4F0EC;
+    --red:#B23A2E;
+    --red-tint:#FBE9E6;
+    --amber:#B9791A;
+    --amber-tint:#FBF0DD;
+    --green:#2F7D4F;
+    --green-tint:#E7F3EA;
+    --shadow:0 1px 2px rgba(18,42,37,.06);
+  }
+  *{box-sizing:border-box}
+  html{scroll-padding-top:env(safe-area-inset-top,0px)}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', -apple-system, Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0E1614; --paper:#152420; --ink:#EAF2EF; --ink-soft:#9BB3AE;
+      --line:#28403A; --teal:#4FA593; --teal-deep:#BFE5DA; --teal-tint:#1B3630;
+      --red:#E37C6E; --red-tint:#3A211E; --amber:#E3AE5B; --amber-tint:#3A2E15;
+      --green:#7FC79A; --green-tint:#1B3223;
+      --shadow:0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1614; --paper:#152420; --ink:#EAF2EF; --ink-soft:#9BB3AE;
+    --line:#28403A; --teal:#4FA593; --teal-deep:#BFE5DA; --teal-tint:#1B3630;
+    --red:#E37C6E; --red-tint:#3A211E; --amber:#E3AE5B; --amber-tint:#3A2E15;
+    --green:#7FC79A; --green-tint:#1B3223;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+
+  .mono{font-family:'IBM Plex Mono', ui-monospace, monospace}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    padding:18px clamp(16px,4vw,40px) 16px;
+    padding-top:calc(18px + env(safe-area-inset-top,0px));
+    background:var(--teal-deep);
+    color:#F3F8F6;
+    border-bottom:1px solid var(--line);
+  }
+  .top-row{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap}
+  .top-row h1{margin:0; font-size:clamp(18px,2.4vw,22px); font-weight:600; letter-spacing:-0.01em}
+  .top-sub{margin:4px 0 0; color:#BFE0D8; font-size:13px}
+  .period-pill{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; color:#0E211D;
+    background:#CFE9E1; border-radius:999px; padding:6px 12px; white-space:nowrap;
+  }
+
+  .wrap{max-width:1180px; margin:0 auto; padding:22px clamp(16px,4vw,40px) 60px}
+
+  /* Avisos fixos */
+  .avisos{display:grid; gap:10px; margin-bottom:26px}
+  .aviso{
+    display:grid; grid-template-columns:auto 1fr; gap:10px;
+    background:var(--paper); border:1px solid var(--line); border-left:4px solid var(--teal);
+    border-radius:6px; padding:12px 14px; box-shadow:var(--shadow);
+  }
+  .aviso.alerta{border-left-color:var(--red)}
+  .aviso.legenda{border-left-color:var(--amber)}
+  .aviso .rotulo{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin:0 0 3px}
+  .aviso p{margin:0; font-size:13.5px; line-height:1.5; color:var(--ink)}
+  .aviso .icone{font-size:16px; line-height:1}
+  .farol-chips{display:flex; gap:10px; flex-wrap:wrap; margin-top:6px}
+  .chip{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-family:'IBM Plex Mono',monospace}
+  .dot{width:9px; height:9px; border-radius:50%; display:inline-block}
+
+  /* Filtros */
+  .filtros{
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+    margin-bottom:22px; padding:12px 14px; background:var(--paper);
+    border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow);
+  }
+  .filtros .rotulo-grupo{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin-right:2px}
+  .filtro{
+    display:flex; align-items:center; gap:7px;
+    border:1px solid var(--line); border-radius:6px; padding:7px 10px;
+    font-size:12.5px; color:var(--ink); background:var(--bg);
+  }
+  .filtro .campo{font-weight:500}
+  .filtro .valor{color:var(--ink-soft)}
+  .filtro .seta{color:var(--ink-soft); font-size:10px}
+  .filtro.contextual{border-style:dashed}
+  .escopo{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--teal);
+    background:var(--teal-tint); border-radius:4px; padding:1px 6px; margin-left:2px;
+  }
+  .filtros .divisor{width:1px; align-self:stretch; background:var(--line); margin:0 2px}
+
+  /* Tabs */
+  nav.tabs{
+    display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:22px;
+    overflow-x:auto; -webkit-overflow-scrolling:touch;
+  }
+  .tab{
+    appearance:none; border:none; background:transparent; cursor:pointer;
+    padding:10px 16px 12px; font:inherit; font-size:13.5px; font-weight:500; color:var(--ink-soft);
+    border-bottom:2px solid transparent; white-space:nowrap;
+  }
+  .tab[aria-selected="true"]{color:var(--teal-deep); border-bottom-color:var(--teal); font-weight:600}
+  :root[data-theme="dark"] .tab[aria-selected="true"], @media (prefers-color-scheme:dark){ .tab[aria-selected="true"]{color:var(--teal)} }
+
+  .panel{display:none}
+  .panel.active{display:block}
+
+  h2.aba-titulo{font-size:16px; margin:0 0 4px; font-weight:600}
+  p.aba-desc{margin:0 0 20px; color:var(--ink-soft); font-size:13.5px; max-width:62ch}
+
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:22px}
+  @media (max-width:760px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+  .kpi{
+    background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:14px 16px;
+    box-shadow:var(--shadow);
+  }
+  .kpi .rotulo{font-size:11.5px; color:var(--ink-soft); margin:0 0 8px}
+  .kpi .valor{font-family:'IBM Plex Mono',monospace; font-size:24px; font-weight:600; color:var(--teal-deep)}
+  :root[data-theme="dark"] .kpi .valor{color:var(--teal)}
+  @media (prefers-color-scheme:dark){ .kpi .valor{color:var(--teal)} }
+  .kpi .fonte{font-size:11px; color:var(--ink-soft); margin-top:6px}
+
+  .grid2{display:grid; grid-template-columns:1.3fr 1fr; gap:14px}
+  @media (max-width:840px){.grid2{grid-template-columns:1fr}}
+
+  .bloco{
+    background:var(--paper); border:1px solid var(--line); border-radius:8px;
+    padding:16px; box-shadow:var(--shadow); margin-bottom:14px;
+  }
+  .bloco h3{margin:0 0 4px; font-size:13.5px; font-weight:600}
+  .bloco .tipo{font-size:11px; color:var(--teal); font-family:'IBM Plex Mono',monospace; margin:0 0 10px}
+
+  .placeholder{
+    border:1.5px dashed var(--line); border-radius:6px; min-height:180px;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    color:var(--ink-soft); font-size:12.5px; padding:14px; background:var(--bg);
+  }
+  .placeholder.curto{min-height:110px}
+  .placeholder.alto{min-height:260px}
+
+  table.esqueleto{width:100%; border-collapse:collapse; font-size:12.5px}
+  table.esqueleto th, table.esqueleto td{
+    text-align:left; padding:8px 10px; border-bottom:1px solid var(--line);
+  }
+  table.esqueleto th{color:var(--ink-soft); font-weight:500; font-size:11.5px}
+  .tag{
+    display:inline-block; font-size:10.5px; font-family:'IBM Plex Mono',monospace;
+    padding:2px 7px; border-radius:4px; background:var(--teal-tint); color:var(--teal-deep);
+  }
+  :root[data-theme="dark"] .tag{color:var(--teal)}
+  @media (prefers-color-scheme:dark){ .tag{color:var(--teal)} }
+
+  .quad{display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:2px; border:1px solid var(--line); border-radius:8px; overflow:hidden; min-height:260px}
+  .quad div{padding:14px; font-size:12px; display:flex; flex-direction:column; justify-content:flex-end}
+  .q1{background:var(--red-tint)} .q2{background:var(--amber-tint)}
+  .q3{background:var(--green-tint)} .q4{background:var(--teal-tint)}
+  .quad strong{display:block; font-size:12.5px; margin-bottom:3px}
+
+  footer{
+    margin-top:30px; padding-top:16px; border-top:1px solid var(--line);
+    font-size:11.5px; color:var(--ink-soft);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-row">
+    <div>
+      <h1>Painel de Capacidade Hospitalar — Unidades de Gestão Própria</h1>
+      <p class="top-sub">Esqueleto para construção no Looker Studio · leitos clínicos e cirúrgicos</p>
+    </div>
+    <span class="period-pill">mai/2024 – mai/2026 · retrospectivo</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- AVISOS FIXOS -->
+  <div class="avisos">
+    <div class="aviso legenda">
+      <span class="icone">◆</span>
+      <div>
+        <p class="rotulo">Farol de ocupação</p>
+        <div class="farol-chips">
+          <span class="chip"><span class="dot" style="background:var(--amber)"></span>&lt; 70% — Capacidade ociosa</span>
+          <span class="chip"><span class="dot" style="background:var(--green)"></span>71–85% — Operação saudável</span>
+          <span class="chip"><span class="dot" style="background:var(--red)"></span>&gt; 85% — Sobrecarga operacional</span>
+        </div>
+      </div>
+    </div>
+    <div class="aviso">
+      <span class="icone">ⓘ</span>
+      <div>
+        <p class="rotulo">Nota metodológica</p>
+        <p>Taxa calculada com base nos leitos cadastrados no SUS/CNES. Os números podem divergir de sistemas que usam leitos operacionais, como a SERMAC — a diferença entre as duas taxas indica leitos bloqueados ou inativos, não erro de integração.</p>
+      </div>
+    </div>
+    <div class="aviso alerta">
+      <span class="icone">▲</span>
+      <div>
+        <p class="rotulo">Natureza do painel</p>
+        <p>Este painel é retrospectivo (24 meses) e serve ao planejamento de investimentos — não é uma ferramenta de monitoramento em tempo real do leito.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="filtros">
+    <span class="rotulo-grupo">Globais</span>
+    <div class="filtro"><span class="campo">Período</span><span class="valor">mai/2024 – mai/2026</span><span class="seta">▾</span></div>
+    <div class="filtro"><span class="campo">Unidade</span><span class="valor">Todas</span><span class="seta">▾</span></div>
+    <div class="divisor"></div>
+    <span class="rotulo-grupo">Contextuais</span>
+    <div class="filtro contextual"><span class="campo">Tipo de leito</span><span class="valor">Todos</span><span class="escopo">abas 2·3</span></div>
+    <div class="filtro contextual"><span class="campo">Especialidade</span><span class="valor">Todas</span><span class="escopo">abas 2·3</span></div>
+  </div>
+
+  <!-- TABS -->
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-tab="geral">1. Cenário Geral</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="cadastro">2. Cadastro × Produção</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="permanencia">3. Permanência e Especialidades</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="investimento">4. Investimento</button>
+  </nav>
+
+  <!-- ABA 1 -->
+  <section class="panel active" id="geral">
+    <h2 class="aba-titulo">Cenário Geral</h2>
+    <p class="aba-desc">Leitura rápida da rede própria: quanto foi produzido, qual o uso da capacidade e onde ficam as unidades.</p>
+
+    <div class="kpi-row">
+      <div class="kpi"><p class="rotulo">Total de saídas (produção)</p><p class="valor">—</p><p class="fonte">soma no período</p></div>
+      <div class="kpi"><p class="rotulo">Ocupação média — cadastrados</p><p class="valor">—%</p><p class="fonte">indicador principal</p></div>
+      <div class="kpi"><p class="rotulo">Ocupação média — operacionais</p><p class="valor">—%</p><p class="fonte">indicador secundário (SERMAC)</p></div>
+      <div class="kpi"><p class="rotulo">TMP médio</p><p class="valor">— dias</p><p class="fonte">tempo médio de permanência</p></div>
+    </div>
+
+    <div class="grid2">
+      <div class="bloco">
+        <h3>Evolução da taxa de ocupação</h3>
+        <p class="tipo">gráfico de linha · eixo X = ano_mes</p>
+        <div class="placeholder alto">2 linhas: Taxa sobre Cadastrados (%) × Taxa sobre Operacionais/SERMAC (%) — 24 meses</div>
+      </div>
+      <div class="bloco">
+        <h3>Mapa das unidades</h3>
+        <p class="tipo">mapa · ponto por unidade</p>
+        <div class="placeholder alto">Cor do ponto = farol de ocupação · tamanho = leitos cadastrados</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABA 2 -->
+  <section class="panel" id="cadastro">
+    <h2 class="aba-titulo">Cadastro (capacidade) × Produção (uso real)</h2>
+    <p class="aba-desc">Mostra os leitos que rendem pouco e os hospitais sobrecarregados, cruzando o que está no papel com o que foi de fato usado.</p>
+
+    <div class="grid2">
+      <div class="bloco">
+        <h3>Matriz por hospital</h3>
+        <p class="tipo">tabela</p>
+        <table class="esqueleto">
+          <thead><tr><th>Hospital</th><th>Leitos cadastrados</th><th>Saídas</th><th>Taxa de ocupação</th><th>TMP</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="tag">farol</span></td></tr>
+            <tr><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="tag">farol</span></td></tr>
+            <tr><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="tag">farol</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="bloco">
+        <h3>Farol operacional</h3>
+        <p class="tipo">gauge / medidor com cor condicional</p>
+        <div class="placeholder">por unidade selecionada</div>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <h3>Ocupação por tipo de leito e especialidade</h3>
+      <p class="tipo">gráfico de barras empilhadas ou heatmap</p>
+      <div class="placeholder curto">Leito clínico × Leito cirúrgico, cruzado com especialidade — para achar a "ociosidade invisível"</div>
+    </div>
+  </section>
+
+  <!-- ABA 3 -->
+  <section class="panel" id="permanencia">
+    <h2 class="aba-titulo">Permanência e Especialidades</h2>
+    <p class="aba-desc">Tempo médio de permanência por especialidade, para identificar desvios de uso do leito frente à especialidade original.</p>
+
+    <div class="grid2">
+      <div class="bloco">
+        <h3>TMP por especialidade</h3>
+        <p class="tipo">gráfico de barras horizontais</p>
+        <div class="placeholder alto">ordenado do maior para o menor TMP</div>
+      </div>
+      <div class="bloco">
+        <h3>Censo diário → pacientes-dia</h3>
+        <p class="tipo">gráfico de área ou linha</p>
+        <div class="placeholder alto">soma mensal de dias_ocupados_mes, fatiado por mês de competência</div>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <h3>Desvio de especialidade por unidade</h3>
+      <p class="tipo">tabela ou heatmap</p>
+      <div class="placeholder curto">unidade × especialidade cadastrada vs. especialidade efetivamente atendida no leito</div>
+    </div>
+  </section>
+
+  <!-- ABA 4 -->
+  <section class="panel" id="investimento">
+    <h2 class="aba-titulo">Investimento</h2>
+    <p class="aba-desc">Cruza o gap entre cadastro e produção para apontar onde investir e em quê: obras de expansão ou manutenção/custeio/pessoal.</p>
+
+    <div class="bloco">
+      <h3>Diagnóstico do investimento</h3>
+      <p class="tipo">campo calculado + matriz 2×2</p>
+      <div class="quad">
+        <div class="q1"><strong>Ocupação alta em ambos</strong>Saturação estrutural → priorizar expansão física / novas alas</div>
+        <div class="q2"><strong>Cadastrado baixo, operacional alto</strong>Ociosidade por bloqueio → manutenção, equipamentos, contratação de equipe</div>
+        <div class="q3"><strong>Ocupação baixa em ambos</strong>Ociosidade real de demanda → readequar perfil assistencial, não ampliar</div>
+        <div class="q4"><strong>Gap elevado (&gt;20%)</strong>Investimento prioritário: manutenção/custeio</div>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <h3>Metas contratuais sugeridas por unidade</h3>
+      <p class="tipo">tabela</p>
+      <table class="esqueleto">
+        <thead><tr><th>Hospital</th><th>Gap cadastro × operacional</th><th>Diagnóstico</th><th>Ação prioritária</th></tr></thead>
+        <tbody>
+          <tr><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+          <tr><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Esqueleto de planejamento · dados de exemplo até a carga real do pipeline (semana de 28/09 a 01/10) · Looker Studio conectado ao PostgreSQL via <span class="mono">tb_censo_mensal_looker</span>.
+    <br>Filtros "contextuais" (tipo de leito, especialidade) devem ter o escopo configurado por página no Looker Studio, valendo só nas abas 2 e 3.
+  </footer>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const panels = document.querySelectorAll('.panel');
+  tabs.forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      tabs.forEach(t=>t.setAttribute('aria-selected','false'));
+      panels.forEach(p=>p.classList.remove('active'));
+      tab.setAttribute('aria-selected','true');
+      document.getElementById(tab.dataset.tab).classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>
