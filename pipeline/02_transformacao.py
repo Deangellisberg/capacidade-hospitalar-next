@@ -2,9 +2,6 @@ from pathlib import Path
 
 import pandas as pd
 
-# Constante com o código da cidade do Recife
-RECIFE = '261160' 
-
 # ------------------------------------------------------------------
 #  Consolida arquivos LT, RD (dados/brutos) e MSHL (dados/brutos/complementares) em DataFrames
 # ------------------------------------------------------------------
@@ -12,11 +9,11 @@ RECIFE = '261160'
 def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: # type: ignore
 
     pasta_brutos = Path(__file__).resolve().parents[1] / "dados" / "brutos"
-    arquivos_lt = sorted(pasta_brutos.glob("*/LT.parquet"))
-    arquivos_rd = sorted(pasta_brutos.glob("*/RD.parquet"))
+    arquivos_lt = sorted(pasta_brutos.glob("*/LT_recife.parquet"))
+    arquivos_rd = sorted(pasta_brutos.glob("*/RD_recife.parquet"))
 
     pasta_complementar = Path(__file__).resolve().parents[1] / "dados" / "brutos" / "complementares"
-    arquivos_mshl = sorted(pasta_complementar.glob("*.parquet"))
+    arquivos_mshl = sorted(pasta_complementar.glob("*_recife.parquet"))
 
     print (f"Consolidando arquivos da pasta: {pasta_brutos}")
 
@@ -32,9 +29,6 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     )
     print (f"Arquivos LT encontrados: {len(arquivos_lt)}")
 
-    # Filtrar o dataframe lt para que tenha apenas os registros cujo CODUFMUN seja igual a RECIFE, mantendo o mesmo df (lt)
-    df_lt = df_lt[df_lt['CODUFMUN'] == RECIFE].reset_index(drop=True)
-
     # Ajustando os tipos de dados das colunas do DataFrame LT
     df_lt = df_lt.astype({	
         'COMPETEN': 'string',
@@ -46,6 +40,7 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
         'QT_EXIST': 'Int64',
         'QT_SUS': 'Int64'
     })
+    df_lt['CPF_CNPJ'] = df_lt['CPF_CNPJ'].replace('00000000000000', pd.NA)
 
     # ------------------------------------------------------------------
     # Lendo os arquivos rd.parquet e concatenando em um DataFrame, apenas com as colunas que nos interessam
@@ -59,9 +54,6 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
 
     print (f"Arquivos RD encontrados: {len(arquivos_rd)}")
 
-    # Filtrar o dataframe rd para que tenha apenas os registros cujo MUNIC_MOV seja igual a RECIFE, mantendo o mesmo df (rd)
-    df_rd = df_rd[df_rd['MUNIC_MOV'] == RECIFE].reset_index(drop=True)
-
     # Ajustando os tipos de dados das colunas do DataFrame RD
     df_rd = df_rd.astype({
     'UF_ZI': 'string',
@@ -71,18 +63,20 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     'CGC_HOSP': 'string',
     'MUNIC_MOV': 'string'
     })
-
-    # Criando coluna COMPETEN concatenando as colunas ANO_CMPT e MES_CMPT (mesmo padrão da tabela LT),
-    # e removendo as colunas ANO_CMPT e MES_CMPT
-    df_rd['COMPETEN'] = df_rd['ANO_CMPT'] + df_rd['MES_CMPT']
-    df_rd = df_rd.drop(columns=['ANO_CMPT', 'MES_CMPT'])
-
+    
     # ------------------------------------------------------------------
     #               A T E N Ç Ã O
     # ------------------------------------------------------------------
     # Numa verificação prévia, detectamos muitos registros com o campo CGC_HOSP vazio (null) na tabela RD, 
     # o que pode afetar a junção com a tabela LT.
 
+
+    df_rd['CGC_HOSP'] = df_rd['CGC_HOSP'].replace('', pd.NA)
+
+    # Criando coluna COMPETEN concatenando as colunas ANO_CMPT e MES_CMPT (mesmo padrão da tabela LT),
+    # e removendo as colunas ANO_CMPT e MES_CMPT
+    df_rd['COMPETEN'] = df_rd['ANO_CMPT'] + df_rd['MES_CMPT']
+    df_rd = df_rd.drop(columns=['ANO_CMPT', 'MES_CMPT'])
 
     # ------------------------------------------------------------------
     # Lendo os arquivos MSHL.parquet e concatenando em um DataFrame, apenas com as colunas que nos interessam
@@ -96,9 +90,6 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
         else pd.DataFrame()
     )
     print (f"Arquivos MSHL encontrados: {len(arquivos_mshl)}")
-
-    # Filtrar o dataframe mshl para que tenha apenas os registros cujo CO_IBGE seja igual a RECIFE, mantendo o mesmo df (mshl)
-    df_mshl = df_mshl[df_mshl['CO_IBGE'] == RECIFE].reset_index(drop=True)
 
     # Ajustando os tipos de dados das colunas do DataFrame MSHL
     df_mshl = df_mshl.astype({
