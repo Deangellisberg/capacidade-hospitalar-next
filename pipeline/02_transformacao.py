@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
+RECIFE = '261160' # Constante com o código da cidade do Recife
 
 # ------------------------------------------------------------------
 #  Consolida RD.parquet e LT.parquet das subpastas de dados/brutos.
@@ -43,7 +44,7 @@ def main():
     })
 
     # Filtra apenas os registros do município de Recife (CODUFMUN = 2611606)
-    lt = lt[lt['CODUFMUN'] == 'RECIFE'].reset_index(drop=True)
+    lt = lt[lt['CODUFMUN'] == RECIFE].reset_index(drop=True)
 
 
 if __name__ == "__main__":
