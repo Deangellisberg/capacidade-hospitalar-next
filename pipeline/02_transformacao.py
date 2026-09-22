@@ -2,6 +2,31 @@ from pathlib import Path
 
 import pandas as pd
 import pyarrow.parquet as pq
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+# ------------------------------------------------------------------
+#  Lê e concatena arquivos parquet, tolerando colunas ausentes em alguns arquivos.
+# ------------------------------------------------------------------
+def ler_consolidado(arquivos, colunas):
+    if not arquivos:
+        return pd.DataFrame(columns=colunas)
+
+    def ler_arquivo(arquivo):
+        existentes = pq.read_schema(arquivo).names
+        cols = [c for c in colunas if c in existentes]
+        return pd.read_parquet(arquivo, columns=cols)
+
+    return (
+        pd.concat((ler_arquivo(a) for a in arquivos), ignore_index=True)
+        .reindex(columns=colunas)
+    )
 
 # ------------------------------------------------------------------
 #  Consolida arquivos LT, RD (dados/brutos) e MSHL (dados/brutos/complementares) em DataFrames
@@ -16,19 +41,15 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     pasta_complementar = Path(__file__).resolve().parents[1] / "dados" / "brutos" / "complementares"
     arquivos_mshl = sorted(pasta_complementar.glob("*_recife.parquet"))
 
-    print (f"Consolidando arquivos da pasta: {pasta_brutos}")
+    logger.info(f"Consolidando arquivos da pasta: {pasta_brutos}")
 
     # ------------------------------------------------------------------
     # Lendo os arquivos lt.parquet e concatenando em um DataFrame, apenas com as colunas que nos interessam
     # ------------------------------------------------------------------
     
     lt_colunas = ['COMPETEN', 'CNES', 'CPF_CNPJ', 'CODUFMUN', 'TP_LEITO', 'CODLEITO', 'QT_EXIST', 'QT_SUS']
-    df_lt = (
-        pd.concat((pd.read_parquet(arquivo, columns=lt_colunas) for arquivo in arquivos_lt), ignore_index=True)
-        if arquivos_lt
-        else pd.DataFrame()
-    )
-    print (f"Arquivos LT encontrados: {len(arquivos_lt)}")
+    df_lt = ler_consolidado(arquivos_lt, lt_colunas)
+    logger.info(f"Arquivos LT encontrados: {len(arquivos_lt)}")
 
     # Ajustando os tipos de dados das colunas do DataFrame LT
     df_lt = df_lt.astype({	
@@ -46,32 +67,28 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     # ------------------------------------------------------------------
     # Lendo os arquivos rd.parquet e concatenando em um DataFrame, apenas com as colunas que nos interessam
     # ------------------------------------------------------------------
-    rd_colunas = ['UF_ZI', 'ANO_CMPT', 'MES_CMPT', 'ESPEC', 'CGC_HOSP', 'MUNIC_MOV']
-    df_rd = (
-        pd.concat((pd.read_parquet(arquivo, columns=rd_colunas) for arquivo in arquivos_rd), ignore_index=True)
-        if arquivos_rd
-        else pd.DataFrame()
-    )
-
-    print (f"Arquivos RD encontrados: {len(arquivos_rd)}")
+    rd_colunas = ['UF_ZI', 'ANO_CMPT', 'MES_CMPT', 'ESPEC', 'CGC_HOSP', 'MUNIC_MOV', 'QT_DIARIAS',
+                  'DT_INTER', 'DT_SAIDA', 'DIAS_PERM']
+    df_rd = ler_consolidado(arquivos_rd, rd_colunas)
+    logger.info(f"Arquivos RD encontrados: {len(arquivos_rd)}")
 
     # Ajustando os tipos de dados das colunas do DataFrame RD
     df_rd = df_rd.astype({
-    'UF_ZI': 'string',
-    'ANO_CMPT': 'string',
-    'MES_CMPT': 'string',
-    'ESPEC': 'string',
-    'CGC_HOSP': 'string',
-    'MUNIC_MOV': 'string'
+        'UF_ZI': 'string',
+        'ANO_CMPT': 'string',
+        'MES_CMPT': 'string',
+        'ESPEC': 'string',
+        'CGC_HOSP': 'string',
+        'MUNIC_MOV': 'string', 
+        'QT_DIARIAS': 'Int64',
+        'DT_INTER': 'string',
+        'DT_SAIDA': 'string',
+        'DIAS_PERM': 'Int64'
     })
     
     # ------------------------------------------------------------------
-    #               A T E N Ç Ã O
+    # Substituindo valores vazios na coluna CGC_HOSP por NaN
     # ------------------------------------------------------------------
-    # Numa verificação prévia, detectamos muitos registros com o campo CGC_HOSP vazio (null) na tabela RD, 
-    # o que pode afetar a junção com a tabela LT.
-
-
     df_rd['CGC_HOSP'] = df_rd['CGC_HOSP'].replace('', pd.NA)
 
     # Criando coluna COMPETEN concatenando as colunas ANO_CMPT e MES_CMPT (mesmo padrão da tabela LT),
@@ -82,25 +99,13 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     # ------------------------------------------------------------------
     # Lendo os arquivos MSHL.parquet e concatenando em um DataFrame, apenas com as colunas que nos interessam
     # ------------------------------------------------------------------
-    mshl_colunas = ['COMP', 'CO_IBGE', 'MUNICIPIO', 'CNES', 'NOME_ESTABELECIMENTO', 'RAZAO_SOCIAL', 'LEITOS_EXISTENTES', 'LEITOS_SUS']
+    mshl_colunas = ['COMP', 'CO_IBGE', 'MUNICIPIO', 'CNES', 'NOME_ESTABELECIMENTO', 'RAZAO_SOCIAL', 
+                    'LEITOS_EXISTENTES', 'LEITOS_SUS'
+                    ]
 
-    print (f"Consolidando arquivos MS/hospitais_leitos da pasta: {pasta_complementar}")
-    # df_mshl = (
-    #     pd.concat((pd.read_parquet(arquivo, columns=mshl_colunas) for arquivo in arquivos_mshl), ignore_index=True)
-    #     if arquivos_mshl
-    #     else pd.DataFrame()
-    # )
-    def ler_mshl(arquivo):
-        existentes = pq.read_schema(arquivo).names
-        return pd.read_parquet(arquivo, columns=[c for c in mshl_colunas if c in existentes])
-
-    df_mshl = (
-        pd.concat((ler_mshl(a) for a in arquivos_mshl), ignore_index=True)
-        .reindex(columns=mshl_colunas)
-        if arquivos_mshl
-        else pd.DataFrame(columns=mshl_colunas)
-    )
-    print (f"Arquivos MSHL encontrados: {len(arquivos_mshl)}")
+    logger.info(f"Consolidando arquivos da pasta: {pasta_complementar}")
+    df_mshl = ler_consolidado(arquivos_mshl, mshl_colunas)
+    logger.info(f"Arquivos MSHL encontrados: {len(arquivos_mshl)}")
 
     # Ajustando os tipos de dados das colunas do DataFrame MSHL
     df_mshl = df_mshl.astype({
