@@ -121,6 +121,9 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
         'TP_GESTAO': 'string'
     })
 
+    # Ele completa o CNES com zeros à esquerda até ter 7 caracteres
+    df_mshl['CNES'] = df_mshl['CNES'].str.zfill(7)
+
     # Renomeando a coluna COMP para COMPETEN, para manter o mesmo padrão das outras tabelas
     df_mshl = df_mshl.rename(columns={'COMP': 'COMPETEN'})
 
