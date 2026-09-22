@@ -101,7 +101,7 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     # Lendo os arquivos MSHL.parquet e concatenando em um DataFrame, apenas com as colunas que nos interessam
     # ------------------------------------------------------------------
     mshl_colunas = ['COMP', 'CO_IBGE', 'MUNICIPIO', 'CNES', 'NOME_ESTABELECIMENTO', 'RAZAO_SOCIAL', 
-                    'LEITOS_EXISTENTES', 'LEITOS_SUS'
+                    'LEITOS_EXISTENTES', 'LEITOS_SUS', 'TP_GESTAO'
                     ]
 
     logger.info(f"Consolidando arquivos da pasta: {pasta_complementar}")
@@ -117,7 +117,8 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
         'NOME_ESTABELECIMENTO': 'string',
         'RAZAO_SOCIAL': 'string',
         'LEITOS_EXISTENTES': 'Int64',
-        'LEITOS_SUS': 'Int64'
+        'LEITOS_SUS': 'Int64',
+        'TP_GESTAO': 'string'
     })
 
     # Renomeando a coluna COMP para COMPETEN, para manter o mesmo padrão das outras tabelas
