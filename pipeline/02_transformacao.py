@@ -96,7 +96,6 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     # Criando coluna COMPETEN concatenando as colunas ANO_CMPT e MES_CMPT (mesmo padrão da tabela LT),
     # e removendo as colunas ANO_CMPT e MES_CMPT
     df_rd['COMPETEN'] = df_rd['ANO_CMPT'] + df_rd['MES_CMPT']
-    df_rd = df_rd.drop(columns=['ANO_CMPT', 'MES_CMPT'])
 
     # ------------------------------------------------------------------
     # Lendo os arquivos MSHL.parquet e concatenando em um DataFrame, apenas com as colunas que nos interessam
