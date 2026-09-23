@@ -1,3 +1,4 @@
+-- Active: 1784846571879@@127.0.0.1@3306
 -- Modelo relacional — Projeto P5 (Capacidade Hospitalar)
 
 -- STATUS: EM DESENVOLVIMENTO — primeira versão, baseada no de-para já validado (de_para_p5_capacidade_hospitalar.xlsx, aba "Tabelas do Banco").
@@ -179,8 +180,7 @@ INSERT INTO dom_tipo_aih (ident, significado) VALUES
 
 CREATE TABLE fato_internacoes (
     n_aih          VARCHAR(20)  NOT NULL,
-    ano_cmpt       CHAR(4)      NOT NULL,
-    mes_cmpt       CHAR(2)      NOT NULL,
+    competencia    CHAR(6) NOT NULL,      -- mantendo o padrão das demais tabelas formato AAAAMM
     cnes           VARCHAR(10),           -- chave de junção, sem FK real (ver nota no topo)
     cgc_hosp       VARCHAR(14),           -- so auditoria, nao usado no join
     espec          CHAR(2),
@@ -196,7 +196,7 @@ CREATE TABLE fato_internacoes (
     idade          INTEGER,
     sexo           CHAR(1),
     morte          CHAR(1),
-    PRIMARY KEY (n_aih, ano_cmpt, mes_cmpt),
+    PRIMARY KEY (n_aih, competencia),
     FOREIGN KEY (espec) REFERENCES dom_especialidade_sih (espec),
     FOREIGN KEY (ident) REFERENCES dom_tipo_aih (ident)
 );
