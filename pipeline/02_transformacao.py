@@ -67,7 +67,7 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     # Lendo os arquivos rd.parquet e concatenando em um DataFrame, apenas com as colunas que nos interessam
     # ------------------------------------------------------------------
     rd_colunas = ['UF_ZI', 'ANO_CMPT', 'MES_CMPT', 'ESPEC', 'CGC_HOSP', 'MUNIC_MOV', 'QT_DIARIAS',
-                  'DT_INTER', 'DT_SAIDA', 'DIAS_PERM', 'IDENT', 'N_AIH']
+                  'DT_INTER', 'DT_SAIDA', 'DIAS_PERM', 'IDENT', 'N_AIH', 'CNES']
     df_rd = ler_consolidado(arquivos_rd, rd_colunas)
     logger.info(f"Arquivos RD encontrados: {len(arquivos_rd)}")
 
@@ -84,7 +84,8 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
         'DT_SAIDA': 'string',
         'DIAS_PERM': 'Int64',
         'IDENT': 'string',
-        'N_AIH': 'string'
+        'N_AIH': 'string',
+        'CNES': 'string'
     })
     
     # ------------------------------------------------------------------

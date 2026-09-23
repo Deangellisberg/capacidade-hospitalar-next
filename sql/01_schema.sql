@@ -3,7 +3,7 @@
 -- STATUS: EM DESENVOLVIMENTO — primeira versão, baseada no de-para já validado (de_para_p5_capacidade_hospitalar.xlsx, aba "Tabelas do Banco").
 -- ORDEM DE CRIAÇÃO: tabelas de domínio e dimensão primeiro, tabelas de fato depois —
 -- Postgres exige que a tabela referenciada por uma FK já exista no momento do CREATE.
--- Todos os campos-chave (cnes, cgc_hosp) são VARCHAR, não INTEGER — porque CNES-LT e SIH-RD.
+-- Todos os campos-chave (cnes) são VARCHAR, não INTEGER — porque CNES-LT e SIH-RD entregam tudo como texto.
 -- MSHL (Hospitais e Leitos/MS), onde CNES chega como número, padronizamos para texto para não perder zeros à esquerda e manter os três lados da junção compatíveis.
 
 
@@ -144,14 +144,7 @@ CREATE TABLE fato_leitos (
     FOREIGN KEY (codleito) REFERENCES dom_codigo_leito (codleito)
 );
 
--- 5. PONTE: TRADUÇÃO CNPJ (SIH-RD) <-> CNES (demais fontes)
-
-CREATE TABLE de_para_cnpj_cnes (
-    cpf_cnpj    VARCHAR(14)  PRIMARY KEY,
-    cnes        VARCHAR(10)  NOT NULL
-);
-
--- 6. DOMÍNIO: ESPECIALIDADE (SIH)
+-- 5. DOMÍNIO: ESPECIALIDADE (SIH)
 
 CREATE TABLE dom_especialidade_sih (
     espec           CHAR(2)      PRIMARY KEY,
@@ -170,7 +163,7 @@ INSERT INTO dom_especialidade_sih (espec, especialidade) VALUES
     ('09', 'Psiquiatria - hospital/dia');
 
 
--- 7. DOMÍNIO: TIPO DE AIH
+-- 6. DOMÍNIO: TIPO DE AIH
 
 CREATE TABLE dom_tipo_aih (
     ident         CHAR(1)      PRIMARY KEY,
@@ -182,20 +175,21 @@ INSERT INTO dom_tipo_aih (ident, significado) VALUES
     ('5', 'AIH de Longa Permanencia e FTP');
 
 
--- 8. FATO: INTERNAÇÕES (SIH-RD)
+-- 7. FATO: INTERNAÇÕES (SIH-RD)
 
 CREATE TABLE fato_internacoes (
     n_aih          VARCHAR(20)  NOT NULL,
     ano_cmpt       CHAR(4)      NOT NULL,
     mes_cmpt       CHAR(2)      NOT NULL,
-    cgc_hosp       VARCHAR(14),           -- NULLABLE — ver comentário acima
+    cnes           VARCHAR(10),           -- chave de junção, sem FK real (ver nota no topo)
+    cgc_hosp       VARCHAR(14),           -- so auditoria, nao usado no join
     espec          CHAR(2),
     ident          CHAR(1),               -- 1=Normal, 5=Longa permanência
-    dt_inter       DATE,                  -- longa permanência (IDENT=5) 
-    dt_saida       DATE,                  -- convertido de texto (AAAAMMDD) no 02_transformacao.py
+    dt_inter       DATE,
+    dt_saida       DATE,
     dias_perm      INTEGER,
-    qt_diarias     INTEGER,               
-    proc_rea       VARCHAR(10),           
+    qt_diarias     INTEGER,
+    proc_rea       VARCHAR(10),
     munic_res      VARCHAR(7),
     munic_mov      VARCHAR(7),
     uf_zi          VARCHAR(7),
@@ -203,7 +197,6 @@ CREATE TABLE fato_internacoes (
     sexo           CHAR(1),
     morte          CHAR(1),
     PRIMARY KEY (n_aih, ano_cmpt, mes_cmpt),
-    FOREIGN KEY (cgc_hosp) REFERENCES de_para_cnpj_cnes (cpf_cnpj),
     FOREIGN KEY (espec) REFERENCES dom_especialidade_sih (espec),
     FOREIGN KEY (ident) REFERENCES dom_tipo_aih (ident)
 );
