@@ -64,10 +64,21 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     df_lt['CPF_CNPJ'] = df_lt['CPF_CNPJ'].replace('00000000000000', pd.NA)
 
     # ------------------------------------------------------------------
+    # O código descarta, antes de qualquer carga, todo leito cujo tp_leito não seja 1 (Cirúrgico) ou 2 (Clínico).
+    # Isso remove automaticamente os códigos 51, 52 e 96, que pertencem à categoria 3 (Complementar).
+    # ------------------------------------------------------------------
+    antes = len(df_lt)
+    df_lt = df_lt[df_lt['TP_LEITO'].isin(['1', '2'])].reset_index(drop=True)
+    logger.info(f"LT: filtradas {antes - len(df_lt)} linhas fora do recorte clínico/cirúrgico "
+                f"(tp_leito fora de ['1','2'], inclui os códigos 51/52/96 de dom_codigo_leito)")
+    
+    # ------------------------------------------------------------------
     # Lendo os arquivos rd.parquet e concatenando em um DataFrame, apenas com as colunas que nos interessam
     # ------------------------------------------------------------------
     rd_colunas = ['UF_ZI', 'ANO_CMPT', 'MES_CMPT', 'ESPEC', 'CGC_HOSP', 'MUNIC_MOV', 'QT_DIARIAS',
-                  'DT_INTER', 'DT_SAIDA', 'DIAS_PERM', 'IDENT', 'N_AIH', 'CNES']
+                  'DT_INTER', 'DT_SAIDA', 'DIAS_PERM', 'IDENT', 'N_AIH', 'CNES', 'SEQUENCIA',
+                  'PROC_REA', 'MUNIC_RES', 'IDADE', 'SEXO', 'MORTE']
+    
     df_rd = ler_consolidado(arquivos_rd, rd_colunas)
     logger.info(f"Arquivos RD encontrados: {len(arquivos_rd)}")
 
@@ -85,18 +96,36 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
         'DIAS_PERM': 'Int64',
         'IDENT': 'string',
         'N_AIH': 'string',
-        'CNES': 'string'
+        'CNES': 'string',
+        'SEQUENCIA': 'string',
+        'PROC_REA': 'string',
+        'MUNIC_RES': 'string',
+        'IDADE': 'Int64',      
+        'SEXO': 'string',
+        'MORTE': 'string'
     })
-    
+
     # ------------------------------------------------------------------
     # Substituindo valores vazios na coluna CGC_HOSP por NaN
     # ------------------------------------------------------------------
     df_rd['CGC_HOSP'] = df_rd['CGC_HOSP'].replace('', pd.NA)
 
-    # Criando coluna COMPETEN concatenando as colunas ANO_CMPT e MES_CMPT (mesmo padrão da tabela LT),
-    # e removendo as colunas ANO_CMPT e MES_CMPT
+    # garante competência no formato AAAAMM
+    df_rd['MES_CMPT'] = df_rd['MES_CMPT'].str.zfill(2)
+
+    # garante CNES com 7 dígitos
+    df_rd['CNES'] = df_rd['CNES'].str.zfill(7)
+
+    # transforma datas para o tipo de data
+    df_rd['DT_INTER'] = pd.to_datetime(
+        df_rd['DT_INTER'], format='%Y%m%d', errors='coerce'
+    )
+    df_rd['DT_SAIDA'] = pd.to_datetime(
+        df_rd['DT_SAIDA'], format='%Y%m%d', errors='coerce'
+    )
+
     df_rd['COMPETEN'] = df_rd['ANO_CMPT'] + df_rd['MES_CMPT']
-    df_rd = df_rd.drop(columns=['ANO_CMPT', 'MES_CMPT'])
+
 
     # ------------------------------------------------------------------
     # Lendo os arquivos MSHL.parquet e concatenando em um DataFrame, apenas com as colunas que nos interessam
