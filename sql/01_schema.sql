@@ -16,11 +16,14 @@ CREATE TABLE lista_hospitais_gestao_propria (
     PRIMARY KEY (cnes, origem)
 );
 
+COMMENT ON TABLE lista_hospitais_gestao_propria IS
+    'Hospitais de gestão própria, com origem rastreável. Troca de fonte é carga nova, nunca reescrita.';
+
 
 -- 1. DIMENSÃO: ESTABELECIMENTO (MSHL — Hospitais e Leitos / Ministério da Saúde)
 
 CREATE TABLE dim_estabelecimento (
-    cnes                     VARCHAR(10)  NOT NULL,
+    cnes                     VARCHAR(7)  NOT NULL,
     competencia              CHAR(6)      NOT NULL,  -- formato AAAAMM
     nome_estabelecimento     VARCHAR(200),
     razao_social             VARCHAR(200),
@@ -36,12 +39,19 @@ CREATE TABLE dim_estabelecimento (
     PRIMARY KEY (cnes, competencia)
 );
 
+COMMENT ON TABLE dim_estabelecimento IS
+    'Identificação do hospital, fonte MSHL. CNES chega como número — converter com Int64->string->zfill(7) para não corromper o valor se houver nulo na coluna.';
+
+
 -- 2. DOMÍNIO: TIPO DE LEITO (categoria ampla)
 
 CREATE TABLE dom_tipo_leito (
     tp_leito     CHAR(2)      PRIMARY KEY,
     categoria    VARCHAR(50)  NOT NULL
 );
+
+COMMENT ON TABLE dom_tipo_leito IS
+    'Categoria ampla de leito. Recorte clínico/cirúrgico: tp_leito IN (''1'',''2''). Sem zero à esquerda no dado real.';
 
 INSERT INTO dom_tipo_leito (tp_leito, categoria) VALUES
     ('1', 'Cirúrgico'),
@@ -59,6 +69,9 @@ CREATE TABLE dom_codigo_leito (
     codleito        CHAR(2)      PRIMARY KEY,
     especialidade   VARCHAR(100) NOT NULL
 );
+
+COMMENT ON TABLE dom_codigo_leito IS
+    'Especialidade específica do leito, 66 códigos. Códigos fora do recorte clínico/cirúrgico (tp_leito=3) são filtrados na transformação, não cadastrados aqui.';
 
 INSERT INTO dom_codigo_leito (codleito, especialidade) VALUES
     ('01', 'Buco Maxilo Facial'),
@@ -132,17 +145,20 @@ INSERT INTO dom_codigo_leito (codleito, especialidade) VALUES
 -- 4. FATO: LEITOS (CNES-LT)
 
 CREATE TABLE fato_leitos (
-    cnes           VARCHAR(10)  NOT NULL,
+    cnes           VARCHAR(7)  NOT NULL,
     codleito       CHAR(2)      NOT NULL,
     tp_leito       CHAR(2),                 -- 1=Cirúrgico, 2=Clínico
     competencia    CHAR(6)      NOT NULL,   -- formato AAAAMM
     qt_exist       INTEGER,
     qt_sus         INTEGER,
     PRIMARY KEY (cnes, codleito, competencia),
-    FOREIGN KEY (cnes, competencia) REFERENCES dim_estabelecimento (cnes, competencia),
     FOREIGN KEY (tp_leito) REFERENCES dom_tipo_leito (tp_leito),
     FOREIGN KEY (codleito) REFERENCES dom_codigo_leito (codleito)
 );
+
+COMMENT ON TABLE fato_leitos IS
+    'Leitos por hospital, tipo e competência. Liga com dim_estabelecimento por cnes, sem FK real — nem toda competência do CNES-LT tem linha correspondente no MSHL. Sempre LEFT JOIN, nunca INNER.';
+
 
 -- 5. DOMÍNIO: ESPECIALIDADE (SIH)
 
@@ -150,6 +166,9 @@ CREATE TABLE dom_especialidade_sih (
     espec           CHAR(2)      PRIMARY KEY,
     especialidade   VARCHAR(100) NOT NULL
 );
+
+COMMENT ON TABLE dom_especialidade_sih IS
+    'Especialidade da internação (SIH). De-para com tipo de leito cobre só 01 e 03 (recorte clínico/cirúrgico). Códigos 10, 12, 87 existem no dado real sem significado oficial documentado — cadastrados como placeholder.';
 
 INSERT INTO dom_especialidade_sih (espec, especialidade) VALUES
     ('01', 'Cirurgia geral'),
@@ -160,7 +179,10 @@ INSERT INTO dom_especialidade_sih (espec, especialidade) VALUES
     ('06', 'Tisiologia'),
     ('07', 'Pediatria'),
     ('08', 'Reabilitação'),
-    ('09', 'Psiquiatria - hospital/dia');
+    ('09', 'Psiquiatria - hospital/dia'),
+    ('10','Fora do domínio original 01-09 - revisar'),
+    ('12','Fora do domínio original 01-09 - revisar'),
+    ('87','Fora do domínio original 01-09 - revisar');
 
 
 -- 6. DOMÍNIO: TIPO DE AIH
@@ -169,6 +191,9 @@ CREATE TABLE dom_tipo_aih (
     ident         CHAR(1)      PRIMARY KEY,
     significado   VARCHAR(200) NOT NULL
 );
+
+COMMENT ON TABLE dom_tipo_aih IS
+    'Tipo de AIH. ident=5 marca longa permanência — mesma internação, nova linha a cada competência, dt_inter repete. Ao contar internações, filtrar ident=''1''.';
 
 INSERT INTO dom_tipo_aih (ident, significado) VALUES
     ('1', 'AIH Normal'),
@@ -179,12 +204,12 @@ INSERT INTO dom_tipo_aih (ident, significado) VALUES
 
 CREATE TABLE fato_internacoes (
     n_aih          VARCHAR(20)  NOT NULL,
-    ano_cmpt       CHAR(4)      NOT NULL,
-    mes_cmpt       CHAR(2)      NOT NULL,
-    cnes           VARCHAR(10),           -- chave de junção, sem FK real (ver nota no topo)
+    competencia    CHAR(6)      NOT NULL,   -- formato AAAAMM
+    cnes           VARCHAR(7),            -- chave de junção, sem FK real (ver nota no topo)
     cgc_hosp       VARCHAR(14),           -- so auditoria, nao usado no join
     espec          CHAR(2),
     ident          CHAR(1),               -- 1=Normal, 5=Longa permanência
+    sequencia      VARCHAR(5),               
     dt_inter       DATE,
     dt_saida       DATE,
     dias_perm      INTEGER,
@@ -196,15 +221,21 @@ CREATE TABLE fato_internacoes (
     idade          INTEGER,
     sexo           CHAR(1),
     morte          CHAR(1),
-    PRIMARY KEY (n_aih, ano_cmpt, mes_cmpt),
+    PRIMARY KEY (n_aih, competencia, ident),
     FOREIGN KEY (espec) REFERENCES dom_especialidade_sih (espec),
     FOREIGN KEY (ident) REFERENCES dom_tipo_aih (ident)
 );
+
+COMMENT ON TABLE fato_internacoes IS
+    'Internações (AIH reduzida). Liga com dim_estabelecimento/fato_leitos por cnes, sem FK real — cgc_hosp fica só como auditoria. Sempre LEFT JOIN. PK inclui ident: longa permanência gera 2 linhas na mesma competência (ident=1 e ident=5), mesmo n_aih. sequencia é só auditoria/desempate.';
 
 CREATE TABLE de_para_especialidade_leito (
     espec      CHAR(2)  PRIMARY KEY REFERENCES dom_especialidade_sih (espec),
     tp_leito   CHAR(2)  NOT NULL REFERENCES dom_tipo_leito (tp_leito)
 );
+
+COMMENT ON TABLE de_para_especialidade_leito IS
+    'Liga especialidade (SIH) a tipo de leito (CNES). Cobre só o recorte mínimo: 01->Cirúrgico, 03->Clínico.';
 
 INSERT INTO de_para_especialidade_leito (espec, tp_leito) VALUES
     ('01', '1'),  -- Cirurgia geral -> Cirúrgico
