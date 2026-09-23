@@ -1,5 +1,4 @@
 from pathlib import Path
-
 import pandas as pd
 import pyarrow.parquet as pq
 import logging
