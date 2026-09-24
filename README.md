@@ -1,121 +1,895 @@
-## Estrutura do projeto (coleta de dados e banco)
+#  P5 — Capacidade Hospitalar
 
+Pipeline de dados desenvolvido para coleta, tratamento, integração e análise de dados públicos de saúde, com foco na **capacidade hospitalar e nas internações do município de Recife/PE**.
+
+O projeto integra dados do **CNES-LT**, **SIH-RD** e **MSHL**, transformando diferentes fontes em uma estrutura analítica armazenada em **PostgreSQL**.
+
+---
+
+##  Sumário
+
+- [Sobre o projeto](#-sobre-o-projeto)
+- [Arquitetura do pipeline](#-arquitetura-do-pipeline)
+- [Fontes de dados](#-fontes-de-dados)
+- [Recorte dos dados](#-recorte-dos-dados)
+- [Estrutura do projeto](#-estrutura-do-projeto)
+- [Pipeline](#-pipeline)
+- [Banco de dados](#-banco-de-dados)
+- [Modelo de integração](#-modelo-de-integração)
+- [Regras de negócio](#-regras-de-negócio)
+- [Recorte de leitos](#-recorte-de-leitos)
+- [Validação dos dados](#-validação-dos-dados)
+- [Configuração do ambiente](#-configuração-do-ambiente)
+- [Execução](#-execução)
+- [Análises e dashboard](#-análises-e-dashboard)
+- [Reprodutibilidade](#-reprodutibilidade)
+- [Limitações](#-limitações-conhecidas)
+- [Documentação](#-documentação)
+- [Status](#-status-do-projeto)
+
+---
+
+#  Sobre o projeto
+
+O projeto **P5 — Capacidade Hospitalar** tem como objetivo construir uma base analítica capaz de relacionar:
+
+- estabelecimentos de saúde;
+- capacidade instalada;
+- quantidade e tipos de leitos;
+- internações hospitalares;
+- especialidades;
+- informações de gestão;
+- competências de referência.
+
+As principais fontes utilizadas são:
+
+- **CNES-LT** — dados de leitos por estabelecimento e tipo;
+- **SIH-RD** — registros reduzidos de internações;
+- **MSHL** — informações complementares de hospitais e leitos.
+
+O resultado esperado é uma base estruturada em PostgreSQL, permitindo consultas, análises exploratórias e posteriormente a construção de um dashboard.
+
+---
+
+#  Arquitetura do pipeline
+
+```text
+┌───────────────────────────────┐
+│       Fontes públicas         │
+│                               │
+│  CNES-LT   SIH-RD   MSHL      │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│        01_coleta.py            │
+│                               │
+│ Coleta + filtro Recife        │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│         dados/brutos/          │
+│                               │
+│ Dados originais + recorte     │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│      02_transformacao.py      │
+│                               │
+│ Limpeza + padronização        │
+│ Tipagem + consolidação        │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│      dados/consolidados/       │
+│                               │
+│ LT / RD / MSHL                │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│          03_carga.py          │
+│                               │
+│ Carga transacional            │
+│ PostgreSQL                    │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│          PostgreSQL           │
+│                               │
+│ Dimensões + Fatos + Domínios  │
+└───────────────┬───────────────┘
+                │
+                ▼
+        ┌───────┴────────┐
+        │                │
+        ▼                ▼
+     SQL / EDA       Dashboard
 ```
+
+---
+
+#  Fontes de dados
+
+| Fonte | Conteúdo | Frequência | Integração |
+|---|---|---|---|
+| **CNES-LT** | Leitos existentes e leitos SUS por estabelecimento e tipo | Mensal | CNES |
+| **SIH-RD** | Internações, permanência, especialidade e informações da AIH | Mensal | CNES |
+| **MSHL** | Estabelecimento, gestão e informações de leitos | Anual | CNES |
+
+## CNES-LT
+
+Utilizado principalmente para representar a **capacidade instalada dos estabelecimentos**.
+
+Principais campos:
+
+```text
+CNES
+COMPETEN
+TP_LEITO
+CODLEITO
+QT_EXIST
+QT_SUS
+```
+
+## SIH-RD
+
+Utilizado para representar as **internações hospitalares**.
+
+Principais campos:
+
+```text
+N_AIH
+COMPETEN
+CNES
+CGC_HOSP
+ESPEC
+IDENT
+SEQUENCIA
+DT_INTER
+DT_SAIDA
+DIAS_PERM
+QT_DIARIAS
+PROC_REA
+MUNIC_RES
+MUNIC_MOV
+UF_ZI
+IDADE
+SEXO
+MORTE
+```
+
+O campo `CGC_HOSP` é mantido para auditoria e não é utilizado como chave principal de integração.
+
+## MSHL
+
+Utilizado como fonte complementar para informações dos estabelecimentos.
+
+Principais campos:
+
+```text
+CNES
+COMP
+CO_IBGE
+MUNICIPIO
+NOME_ESTABELECIMENTO
+RAZAO_SOCIAL
+LEITOS_EXISTENTES
+LEITOS_SUS
+TP_GESTAO
+```
+
+---
+
+#  Recorte dos dados
+
+O projeto trabalha com o município de **Recife/PE**.
+
+**Código IBGE:**
+
+```text
+261160
+```
+
+A coleta foi estruturada para trabalhar com:
+
+- competências mensais do CNES-LT;
+- competências mensais do SIH-RD;
+- dados anuais do MSHL.
+
+## Evidência do Checkpoint 1
+
+A validação apresentada no Checkpoint 1 utilizou a competência:
+
+```text
+202508
+```
+
+Referências utilizadas:
+
+| Indicador | Resultado |
+|---|---:|
+| SIH-RD Recife | aproximadamente 29.936 linhas |
+| Internações nas unidades da Prefeitura | aproximadamente 2.747 |
+| Internações da Prefeitura sem hospital identificado | 0 |
+| Leitos clínicos/cirúrgicos | 322 |
+| Permanência média | 3,33 dias |
+| `fato_internacoes` | 29.936 linhas |
+| CNES com tamanho diferente de 7 | 0 |
+
+> **Observação:** os arquivos atualmente presentes no pacote de desenvolvimento também possuem competências posteriores, utilizadas durante o desenvolvimento e os testes do pipeline.
+
+---
+
+#  Estrutura do projeto
+
+```text
 capacidade-hospitalar-next/
+│
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
+│
 ├── pipeline/
-│   ├── 01_coleta.py         # coleta CNES-LT, SIH-RD e MSHL; filtra Recife
-│   └── 02_transformacao.py  # trata tipo, nulo/vazio, consolida os 3 DataFrames
-├── sql/
-│   └── 01_schema.sql        # DDL do banco: 9 tabelas, PK/FK, domínios já semeados
+│   ├── 01_coleta.py
+│   ├── 02_transformacao.py
+│   └── 03_carga.py
+│
 ├── dados/
-│   ├── amostra/              # amostra pequena, versionada no Git
-│   └── brutos/                # coleta completa, NÃO versionada (ver .gitignore)
-│       ├── AAAAMM/            # uma pasta por competência (CNES-LT e SIH-RD)
-│       └── complementares/    # MSHL (fonte anual, fora do padrão mensal)
-└── docs/
-    ├── regra_dias_internacao_mes.md    # regra de cálculo de pacientes-dia/ocupação
-    ├── fonte_dados/
-    │   ├── SCNES_DOMINIOS.XLS    # dicionário de domínios do SCNES 
-    │   ├── dicionario_campos_p5.docx    # documentação detalhada dos campos do pipeline P5  
-    │   ├── dicionario_campos_p5_simplificado.docx    # versão simplificada para consulta rápida
-    │   ├── dominio_codeleito_tpleito_cnes.md    # explicação dos códigos de leitos no CNES 
-    │   ├── dicionario_dominios_sih_rd.md    # domínios ESPEC/IDENT do SIH-RD, reconstruídos de fontes DATASUS
-    │   └── leitos_dominio.csv    # tabela de referência dos tipos de leitos 
-    └── justificativa_mudanca_basedados/
-        ├── documentacao_fonte_hospitais_leitos_ms.md    # detalha a coleta e filtros aplicados aos dados de hospitais/leitos do MS
-        └── justificativa_troca_fonte_cnes_st.md    # justificativa da troca da fonte CNES-ST 
-
+│   ├── amostra/
+│   ├── brutos/
+│   ├── consolidados/
+│   └── rejeitados/
+│
+├── sql/
+│   └── 01_schema.sql
+│
+├── analises/
+│
+├── dashboard/
+│   ├── esqueleto-painel.html
+│   └── ideia-de-visual-painel.md
+│
+├── docs/
+│   ├── ata-16-09-26.md
+│   ├── ata-17-09-26.md
+│   ├── ata-21-09-26.md
+│   ├── ata-22-09-26.md
+│   │
+│   ├── de-para/
+│   │   └── de_para_p5_capacidade_hospitalar.xlsx
+│   │
+│   ├── fonte_dados/
+│   │   ├── SCNES_DOMINIOS.XLS
+│   │   ├── dicionario_campos_p5.docx
+│   │   ├── dicionario_campos_p5_simplificado.docx
+│   │   ├── dominio_codleito_tpleito_cnes.md
+│   │   └── leitos_dominio.csv
+│   │
+│   └── justificativa_mudanca_basedados/
+│       ├── documentacao_fonte_hospitais_leitos_ms.md
+│       └── justificativa_troca_fonte_cnes_st.md
+│
+└── pitch/
+    └── slides/
 ```
-## Como rodar a coleta do zero
 
-### Pré-requisitos
+---
 
-- Python 3.13 (versões muito recentes, como 3.14+, ainda não têm suporte completo das bibliotecas usadas aqui)
-- Acesso à internet (a coleta baixa direto de fontes públicas: DATASUS e Ministério da Saúde)
+#  Pipeline
 
-### Passo a passo
+## 1. Coleta
+
+Arquivo:
+
+```text
+pipeline/01_coleta.py
+```
+
+Responsabilidades:
+
+- coletar CNES-LT;
+- coletar SIH-RD;
+- coletar MSHL;
+- filtrar o município de Recife;
+- salvar os dados brutos;
+- preservar os arquivos para rastreabilidade.
+
+### Execução
 
 ```bash
-# 1. Clone o repositório
-git clone https://github.com/Deangellisberg/capacidade-hospitalar-next.git
-cd capacidade-hospitalar-next
-
-# 2. Crie e ative o ambiente virtual (Python 3.13 especificamente)
-py -3.13 -m venv .venv
-source .venv/Scripts/activate      # Windows (Git Bash)
-# source .venv/bin/activate        # macOS/Linux
-
-# 3. Instale as dependências (versões fixadas — mesmas já testadas no projeto)
-pip install -r requirements.txt
-
-# 4. Rode a coleta e a transformação
 python pipeline/01_coleta.py
+```
+
+Os dados são armazenados em:
+
+```text
+dados/brutos/
+```
+
+Para CNES-LT e SIH-RD:
+
+```text
+dados/brutos/AAAAMM/
+```
+
+Para MSHL:
+
+```text
+dados/brutos/complementares/
+```
+
+Os arquivos terminados em:
+
+```text
+_recife.parquet
+```
+
+representam o recorte utilizado nas etapas seguintes.
+
+---
+
+## 2. Transformação
+
+Arquivo:
+
+```text
+pipeline/02_transformacao.py
+```
+
+Responsabilidades:
+
+- selecionar as colunas utilizadas pelo modelo;
+- padronizar tipos;
+- tratar valores vazios;
+- padronizar códigos;
+- padronizar o CNES;
+- gerar a competência;
+- consolidar os arquivos por fonte.
+
+### Execução
+
+```bash
 python pipeline/02_transformacao.py
 ```
 
-Isso coleta as três fontes de jan/2024 a dez/2026. Meses que ainda não aconteceram (ex.: os últimos meses de 2026, dependendo de quando você rodar) aparecem como "indisponível" no log — é esperado, não é erro. Rodar de novo não duplica nem refaz o que já foi coletado (a coleta é idempotente).
+Arquivos gerados:
 
-**Resultado esperado:** ao final, o log mostra um resumo com quantas competências deram certo, quantas foram puladas (já existiam), quantas ainda não estavam disponíveis na fonte, e quantas falharam de verdade. Se "Erros" vier zero, a coleta está completa.
+```text
+dados/consolidados/LT_consolidado.parquet
+dados/consolidados/RD_consolidado.parquet
+dados/consolidados/MSHL_consolidado.parquet
+```
 
-**Qual arquivo usar:** dentro de `dados/brutos/`, cada fonte gera dois arquivos — um com o dado bruto (Pernambuco inteiro, ou Brasil inteiro no caso do MSHL) e outro só com Recife. Use sempre o que termina em `_recife.parquet`; o outro existe só como auditoria.
+O CNES do MSHL é padronizado para sete caracteres, preservando zeros à esquerda.
 
-## Como criar o banco de dados
+---
 
-### Pré-requisitos
+## 3. Carga
 
-- PostgreSQL instalado, com `psql` acessível no terminal. No Windows, se o `psql --version` der "command not found" mesmo com o PostgreSQL instalado, é um problema de PATH — adicione a pasta `bin` da instalação (ex.: `C:\Program Files\PostgreSQL\<versão>\bin`) ao PATH do sistema ou do Git Bash (`~/.bashrc`).
+Arquivo:
 
-### Passo a passo
+```text
+pipeline/03_carga.py
+```
+
+Responsável por carregar os arquivos consolidados no PostgreSQL.
+
+### Execução normal
 
 ```bash
-# 1. Crie o banco do projeto, já forçando UTF-8 explicitamente
-psql -U postgres -c "CREATE DATABASE capacidade_hospitalar WITH ENCODING 'UTF8' LC_COLLATE='Portuguese_Brazil.1252' LC_CTYPE='Portuguese_Brazil.1252' TEMPLATE=template0;"
+python pipeline/03_carga.py
+```
 
-# 2. Rode o schema (cria as 9 tabelas, com PK/FK e os domínios já semeados)
+### Teste sem persistência
+
+```bash
+python pipeline/03_carga.py --dry-run
+```
+
+O `dry-run` executa o processo de carga e realiza `ROLLBACK` ao final.
+
+### Ordem lógica da carga
+
+```text
+dim_estabelecimento
+        ↓
+fato_leitos
+        ↓
+fato_internacoes
+```
+
+Os domínios são criados e populados pelo arquivo:
+
+```text
+sql/01_schema.sql
+```
+
+A carga utiliza as chaves definidas no banco e realiza atualização quando encontra registros existentes.
+
+---
+
+#  Banco de dados
+
+O schema está definido em:
+
+```text
+sql/01_schema.sql
+```
+
+O modelo atual possui **9 tabelas**:
+
+```text
+lista_hospitais_gestao_propria
+dim_estabelecimento
+dom_tipo_leito
+dom_codigo_leito
+fato_leitos
+dom_especialidade_sih
+dom_tipo_aih
+fato_internacoes
+de_para_especialidade_leito
+```
+
+## Principais grupos
+
+### Dimensão
+
+```text
+dim_estabelecimento
+```
+
+Representa os estabelecimentos de saúde.
+
+### Fatos
+
+```text
+fato_leitos
+fato_internacoes
+```
+
+Representam respectivamente:
+
+- capacidade de leitos;
+- registros de internações.
+
+### Domínios
+
+```text
+dom_tipo_leito
+dom_codigo_leito
+dom_especialidade_sih
+dom_tipo_aih
+```
+
+Centralizam classificações utilizadas pelo modelo.
+
+---
+
+#  Modelo de integração
+
+O **CNES** é a principal chave de integração entre as fontes.
+
+```text
+                       CNES
+                        │
+            ┌───────────┼───────────┐
+            │           │           │
+           MSHL       CNES-LT     SIH-RD
+            │           │           │
+            ▼           ▼           ▼
+      dim_estabelecimento
+                    │
+             ┌──────┴──────┐
+             ▼             ▼
+        fato_leitos   fato_internacoes
+```
+
+O campo `CGC_HOSP` do SIH-RD permanece disponível para auditoria, mas não é utilizado como chave principal de relacionamento.
+
+Essa decisão considera o comportamento do campo no recorte utilizado pelo projeto.
+
+---
+
+#  Regras de negócio
+
+## Internações
+
+A chave primária de `fato_internacoes` é:
+
+```text
+(n_aih, competencia, ident)
+```
+
+O campo `IDENT` faz parte da chave porque uma mesma AIH pode aparecer em diferentes situações relacionadas à longa permanência.
+
+Para contabilizar internações:
+
+```sql
+WHERE ident = '1'
+```
+
+O registro:
+
+```text
+ident = '5'
+```
+
+representa continuidade de longa permanência e não deve ser contabilizado como uma nova internação.
+
+---
+
+## Relacionamentos
+
+As consultas devem priorizar:
+
+```sql
+LEFT JOIN
+```
+
+em vez de:
+
+```sql
+INNER JOIN
+```
+
+Isso evita eliminar registros de internações ou leitos quando não existe correspondência em alguma fonte complementar.
+
+---
+
+#  Recorte de leitos
+
+O projeto utiliza o seguinte recorte:
+
+| `TP_LEITO` | Classificação |
+|---:|---|
+| 1 | Cirúrgico |
+| 2 | Clínico |
+
+Na competência `202508`, o recorte representa:
+
+```text
+Leitos cirúrgicos: 52
+Leitos clínicos:    270
+-----------------------
+Total:              322
+```
+
+O total considerando todos os tipos de leito é aproximadamente:
+
+```text
+942 leitos
+```
+
+Portanto, o recorte clínico/cirúrgico representa apenas uma parte da capacidade hospitalar total e essa diferença deve ser considerada nas análises e no dashboard.
+
+---
+
+#  Validação dos dados
+
+O projeto possui scripts específicos para validação:
+
+```text
+teste_consolidados.py
+teste_qualidade.py
+teste_relacionamentos.py
+teste_cnes.py
+```
+
+As validações verificam:
+
+- estrutura dos arquivos;
+- quantidade de registros;
+- nomes das colunas;
+- tipos dos dados;
+- valores nulos;
+- competências;
+- relacionamento por CNES;
+- relacionamento entre fontes;
+- registros sem correspondência.
+
+Esses testes são utilizados antes da carga definitiva para identificar inconsistências no processo de integração.
+
+---
+
+#  Configuração do ambiente
+
+## Requisitos
+
+- Python 3.11+
+- PostgreSQL
+- Git
+
+## Criar ambiente virtual
+
+Windows:
+
+```powershell
+python -m venv .venv
+```
+
+Ativar:
+
+```powershell
+.venv\Scripts\activate
+```
+
+## Instalar dependências
+
+```bash
+pip install -r requirements.txt
+```
+
+Principais bibliotecas:
+
+```text
+pandas
+PySUS
+SQLAlchemy
+psycopg2-binary
+python-dotenv
+```
+
+---
+
+#  Configuração do PostgreSQL
+
+A carga utiliza a variável de ambiente:
+
+```text
+DATABASE_URL
+```
+
+Formato:
+
+```text
+postgresql://usuario:senha@host:5432/capacidade_hospitalar
+```
+
+Exemplo local:
+
+```text
+DATABASE_URL=postgresql://postgres:SUA_SENHA@localhost:5432/capacidade_hospitalar
+```
+
+> **Importante:** não coloque senhas diretamente no código e não versione credenciais no Git.
+
+Antes de executar `03_carga.py`, a variável `DATABASE_URL` deve estar configurada no ambiente utilizado.
+
+---
+
+#  Execução completa
+
+Depois de configurar Python e PostgreSQL:
+
+### 1. Coleta
+
+```bash
+python pipeline/01_coleta.py
+```
+
+### 2. Transformação
+
+```bash
+python pipeline/02_transformacao.py
+```
+
+### 3. Criação do banco
+
+```bash
+psql -U postgres -c "CREATE DATABASE capacidade_hospitalar WITH ENCODING 'UTF8' TEMPLATE=template0;"
+```
+
+### 4. Aplicação do schema
+
+```bash
 psql -U postgres -d capacidade_hospitalar -f sql/01_schema.sql --set ON_ERROR_STOP=1
+```
 
-# 3. Confirme que as 9 tabelas foram criadas
+### 5. Teste da carga
+
+```bash
+python pipeline/03_carga.py --dry-run
+```
+
+### 6. Carga definitiva
+
+```bash
+python pipeline/03_carga.py
+```
+
+### 7. Conferir tabelas
+
+```bash
 psql -U postgres -d capacidade_hospitalar -c "\dt"
 ```
 
-**Sobre o `WITH ENCODING 'UTF8' ... TEMPLATE=template0`:** sem isso, o banco pode herdar um encoding diferente de UTF-8 (dependendo da configuração regional do Windows), fazendo acento sair quebrado em qualquer consulta depois. `TEMPLATE=template0` garante que a criação não herda nada de um template padrão já "contaminado". Se der erro reclamando do `LC_COLLATE`/`LC_CTYPE` (alguns Windows não têm esse locale instalado), usa a versão mais simples: `CREATE DATABASE capacidade_hospitalar WITH ENCODING 'UTF8' TEMPLATE=template0;`.
+---
 
-**Se você já criou o banco sem esses parâmetros e está vendo acento quebrado:** confirme o encoding atual com `psql -U postgres -d capacidade_hospitalar -c "SHOW server_encoding;"`. `server_encoding` só é definido na criação do banco — não tem como corrigir depois sem recriar. Apague o banco (`DROP DATABASE capacidade_hospitalar;`) e recrie com o comando acima.
+#  Análises e dashboard
 
-**Sobre o `--set ON_ERROR_STOP=1`:** sem essa flag, o `psql -f` não para em erro — ele segue rodando o resto do script mesmo se uma linha falhar, mascarando o problema. Sempre use essa flag ao rodar scripts SQL neste projeto.
+As análises exploratórias e consultas SQL devem ser armazenadas em:
 
-**Resultado esperado:** 9 tabelas (`lista_hospitais_gestao_propria`, `dim_estabelecimento`, `dom_tipo_leito`, `dom_codigo_leito`, `fato_leitos`, `dom_especialidade_sih`, `dom_tipo_aih`, `fato_internacoes`, `de_para_especialidade_leito`). As tabelas de domínio e o de-para de especialidade já vêm com dado (são referência fixa, não dependem de coleta); as demais ficam vazias até o `03_carga.py` (em desenvolvimento) popular com dado real.
+```text
+analises/
+```
 
-**Teste de reprodutibilidade** (recomendado antes de qualquer entrega): apague e recrie o banco do zero, seguindo só os 3 comandos acima — se rodar sem nenhum erro, o schema está reprodutível.
+O objetivo é utilizar os dados efetivamente carregados no PostgreSQL para responder às perguntas definidas no projeto.
 
-## Fontes e dados coletados
+Entre as análises previstas:
 
-| Fonte | O que traz | Frequência | Chave |
-|---|---|---|---|
-| **CNES-LT** | Quantidade de leitos por hospital e tipo (clínico, cirúrgico, etc.) | Mensal | `CNES` |
-| **SIH-RD** | Internações: data de saída, dias de permanência, especialidade | Mensal | `CNES` |
-| **MSHL** (Hospitais e Leitos/MS) | Nome do hospital, razão social, gestão, endereço | Anual | `CNES` |
+- quantidade de internações nas unidades da Prefeitura;
+- internações sem hospital identificado;
+- capacidade instalada;
+- permanência média;
+- quantidade de registros por competência;
+- validação do tamanho do CNES;
+- comparação entre tipos de leitos.
 
-| Campo (principais) | Fonte | Descrição |
-|---|---|---|
-| `CNES` | CNES-LT, SIH-RD, MSHL | Código do estabelecimento de saúde — chave de junção entre as três fontes, sem tabela-ponte |
-| `CODUFMUN` | CNES-LT | Código do município (filtro: 261160 = Recife) |
-| `TP_LEITO` | CNES-LT | Categoria do leito (1 = Cirúrgico, 2 = Clínico) |
-| `CODLEITO` | CNES-LT | Especialidade específica do leito |
-| `QT_EXIST` / `QT_SUS` | CNES-LT | Quantidade de leitos existentes / disponíveis ao SUS |
-| `CGC_HOSP` | SIH-RD | CNPJ do hospital — mantido só como campo de auditoria, não é mais usado para join (as 16 unidades da Prefeitura não têm CNPJ próprio) |
-| `DT_INTER` / `DT_SAIDA` | SIH-RD | Data de início e de saída do paciente |
-| `DIAS_PERM` | SIH-RD | Dias de permanência internado |
-| `ESPEC` | SIH-RD | Especialidade da internação |
-| `IDENT` | SIH-RD | Tipo de AIH (1=Normal, 5=Longa permanência) — faz parte da chave primária de `fato_internacoes` |
-| `NOME_ESTABELECIMENTO` | MSHL | Nome do hospital |
-| `TP_GESTAO` | CNES-LT, MSHL | Esfera de gestão (M/E/D/S) |
+O dashboard está organizado em:
 
-Dicionário completo de todos os campos (incluindo os não usados diretamente pelas perguntas do Canvas, tipos de dado reais e tabelas de domínio) em `docs/fonte_dados/dicionario_campos_p5.docx`.
+```text
+dashboard/
+```
 
-**Limitações conhecidas** (detalhadas em `docs/`):
-- `fato_leitos` e `fato_internacoes` ligam com `dim_estabelecimento` por `cnes`, sem FK real (constraint) — o MSHL é publicado por ano e tem lacunas reais de cobertura. Sempre `LEFT JOIN` (nunca `INNER`), nunca descartando leito ou internação sem hospital correspondente.
-- As competências mais recentes do SIH-RD chegam sistematicamente incompletas (defasagem estrutural do sistema).
+---
+
+#  Reprodutibilidade
+
+Para reproduzir o projeto:
+
+```text
+1. Clonar o repositório
+2. Criar o ambiente virtual
+3. Instalar as dependências
+4. Criar o banco PostgreSQL
+5. Executar o schema
+6. Configurar DATABASE_URL
+7. Executar a coleta ou utilizar os dados brutos disponíveis
+8. Executar a transformação
+9. Executar o dry-run da carga
+10. Executar a carga definitiva
+11. Executar as consultas de validação
+12. Realizar as análises
+```
+
+Fluxo resumido:
+
+```text
+Coleta
+   ↓
+Dados brutos
+   ↓
+Transformação
+   ↓
+Parquet consolidado
+   ↓
+Validação
+   ↓
+PostgreSQL
+   ↓
+SQL / EDA
+   ↓
+Dashboard
+```
+
+---
+
+#  Limitações conhecidas
+
+### Periodicidade das fontes
+
+O MSHL possui periodicidade anual, enquanto CNES-LT e SIH-RD possuem periodicidade mensal.
+
+Consequentemente, nem toda competência das fontes mensais possui necessariamente uma correspondência direta no MSHL.
+
+---
+
+### Integração por CNES
+
+O CNES é utilizado como principal identificador de integração.
+
+Ainda assim, podem existir registros sem correspondência entre as fontes, especialmente devido às diferenças de cobertura e competência.
+
+---
+
+### CGC_HOSP
+
+O campo `CGC_HOSP` do SIH-RD pode estar vazio e, por isso, não é utilizado como chave principal de integração.
+
+---
+
+### Recorte de leitos
+
+O recorte:
+
+```text
+TP_LEITO IN (1, 2)
+```
+
+considera apenas leitos cirúrgicos e clínicos.
+
+Portanto, os resultados não representam necessariamente toda a capacidade hospitalar disponível.
+
+---
+
+### Defasagem
+
+A fonte SIH-RD pode apresentar defasagem de publicação das competências mais recentes.
+
+---
+
+#  Documentação
+
+A documentação complementar está organizada em:
+
+```text
+docs/
+```
+
+## Fontes de dados
+
+```text
+docs/fonte_dados/
+```
+
+Contém documentação de campos, domínios e informações relacionadas às fontes utilizadas.
+
+## De-para
+
+```text
+docs/de-para/
+```
+
+Contém o mapeamento utilizado no projeto:
+
+```text
+de_para_p5_capacidade_hospitalar.xlsx
+```
+
+## Justificativas técnicas
+
+```text
+docs/justificativa_mudanca_basedados/
+```
+
+Contém as justificativas relacionadas às fontes e decisões adotadas no modelo.
+
+---
+
+#  Status do projeto
+
+## Concluído
+
+- [x] Coleta das fontes
+- [x] Filtragem de Recife
+- [x] Transformação dos dados
+- [x] Consolidação dos arquivos Parquet
+- [x] Modelo relacional
+- [x] Domínios
+- [x] Validações iniciais
+- [x] Pipeline de carga
+- [x] Implementação de `dry-run`
+
+## Em andamento
+
+- [ ] Validação completa da carga
+- [ ] Consultas analíticas
+- [ ] EDA
+- [ ] Dashboard
+- [ ] Ensaios complementares do Checkpoint 1
+
+---
+
+#  Projeto
+
+**P5 — Capacidade Hospitalar**
+
+**NExT Dados 2026.1**  
+**CESAR School**
+
+Projeto desenvolvido em equipe para coleta, tratamento, integração e análise de dados públicos de saúde.
