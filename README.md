@@ -289,7 +289,7 @@ capacidade-hospitalar-next/
 Antes de iniciar, é necessário possuir:
 
 * Git;
-* Python 3.11 ou superior;
+* Python 3.13 especificamente;
 * PostgreSQL;
 * acesso ao terminal;
 * conexão com a internet para a etapa de coleta.
