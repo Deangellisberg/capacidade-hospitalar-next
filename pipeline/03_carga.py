@@ -31,6 +31,9 @@ from pathlib import Path
 import pandas as pd
 import psycopg2
 
+from dotenv import load_dotenv
+load_dotenv()
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -44,7 +47,7 @@ logger = logging.getLogger(__name__)
 RAIZ = Path(__file__).resolve().parents[1]
 PASTA_CONSOLIDADOS = RAIZ / "dados" / "consolidados"
 PASTA_REJEITADOS = RAIZ / "dados" / "rejeitados"
-SCHEMA_PADRAO = Path(__file__).resolve().parent / "01_schema.sql"
+SCHEMA_PADRAO = Path(__file__).resolve().parents[1] / "sql/01_schema.sql"
 
 ARQUIVOS = {
     "lt": PASTA_CONSOLIDADOS / "LT_consolidado.parquet",
@@ -295,7 +298,7 @@ def main():
     mshl = pd.read_parquet(ARQUIVOS["mshl"])
     logger.info("Lidos: LT=%s | RD=%s | MSHL=%s", f"{len(lt):,}", f"{len(rd):,}", f"{len(mshl):,}")
 
-    conn = psycopg2.connect(os.environ.get("DATABASE_URL", ""))
+    conn = psycopg2.connect(os.environ.get("DATABASE_URL"))
     try:
         with conn.cursor() as cur:
             garantir_schema(cur, args.schema)
