@@ -29,7 +29,11 @@ import os
 from pathlib import Path
 
 import pandas as pd
-import psycopg2
+import conexao as cnx
+from psycopg2 import sql
+
+from dotenv import load_dotenv
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,7 +48,7 @@ logger = logging.getLogger(__name__)
 RAIZ = Path(__file__).resolve().parents[1]
 PASTA_CONSOLIDADOS = RAIZ / "dados" / "consolidados"
 PASTA_REJEITADOS = RAIZ / "dados" / "rejeitados"
-SCHEMA_PADRAO = Path(__file__).resolve().parent / "01_schema.sql"
+SCHEMA_PADRAO = Path(__file__).resolve().parents[1] / "sql/01_schema.sql"
 
 ARQUIVOS = {
     "lt": PASTA_CONSOLIDADOS / "LT_consolidado.parquet",
@@ -232,7 +236,11 @@ def garantir_schema(cur, caminho):
 
 
 def _dominio(cur, tabela, coluna):
-    cur.execute(f"SELECT {coluna} FROM {tabela}")
+    consulta = sql.SQL("SELECT {coluna} FROM {tabela}").format(
+        coluna=sql.Identifier(coluna),
+        tabela=sql.Identifier(tabela),
+    )
+    cur.execute(consulta)
     return {str(linha[0]).strip() for linha in cur.fetchall()}
 
 
@@ -243,26 +251,42 @@ def _upsert(cur, tabela, df, pk):
         return 0
 
     colunas = list(df.columns)
-    lista = ", ".join(colunas)
     stg = f"stg_{tabela}"
 
-    cur.execute(f"CREATE TEMP TABLE {stg} (LIKE {tabela} INCLUDING DEFAULTS) ON COMMIT DROP")
+    # Nomes (tabela, colunas, chave) nunca entram como texto puro: sempre
+    # como Identifier, para não quebrar se algum nome mudar ou tiver
+    # caractere especial/reservado.
+    tabela_id = sql.Identifier(tabela)
+    stg_id = sql.Identifier(stg)
+    colunas_id = sql.SQL(", ").join(sql.Identifier(c) for c in colunas)
+    pk_id = sql.SQL(", ").join(sql.Identifier(c) for c in pk)
+
+    cur.execute(
+        sql.SQL("CREATE TEMP TABLE {stg} (LIKE {tabela} INCLUDING DEFAULTS) ON COMMIT DROP")
+        .format(stg=stg_id, tabela=tabela_id)
+    )
 
     buffer = io.StringIO()
     df.to_csv(buffer, index=False, header=False, date_format="%Y-%m-%d")
     buffer.seek(0)
-    cur.copy_expert(f"COPY {stg} ({lista}) FROM STDIN WITH (FORMAT csv)", buffer)
+    copy_query = sql.SQL("COPY {stg} ({colunas}) FROM STDIN WITH (FORMAT csv)").format(
+        stg=stg_id, colunas=colunas_id
+    )
+    cur.copy_expert(copy_query.as_string(cur), buffer)
 
     atualizar = [c for c in colunas if c not in pk]
     if atualizar:
-        acao = "DO UPDATE SET " + ", ".join(f"{c} = EXCLUDED.{c}" for c in atualizar)
+        acao = sql.SQL("DO UPDATE SET ") + sql.SQL(", ").join(
+            sql.SQL("{c} = EXCLUDED.{c}").format(c=sql.Identifier(c)) for c in atualizar
+        )
     else:
-        acao = "DO NOTHING"
+        acao = sql.SQL("DO NOTHING")
 
-    cur.execute(
-        f"INSERT INTO {tabela} ({lista}) SELECT {lista} FROM {stg} "
-        f"ON CONFLICT ({', '.join(pk)}) {acao}"
-    )
+    query = sql.SQL(
+        "INSERT INTO {tabela} ({colunas}) SELECT {colunas} FROM {stg} "
+        "ON CONFLICT ({pk}) {acao}"
+    ).format(tabela=tabela_id, colunas=colunas_id, stg=stg_id, pk=pk_id, acao=acao)
+    cur.execute(query)
     logger.info("%s: %s linha(s) inseridas/atualizadas.", tabela, f"{cur.rowcount:,}")
     return cur.rowcount
 
@@ -271,7 +295,7 @@ def _resumo(cur):
     logger.info("=" * 50)
     logger.info("LINHAS NO BANCO")
     for tabela in ["dim_estabelecimento", "fato_leitos", "fato_internacoes"]:
-        cur.execute(f"SELECT count(*) FROM {tabela}")
+        cur.execute(sql.SQL("SELECT count(*) FROM {tabela}").format(tabela=sql.Identifier(tabela)))
         logger.info("%-22s %s", tabela, f"{cur.fetchone()[0]:,}")
     logger.info("=" * 50)
 
@@ -295,7 +319,7 @@ def main():
     mshl = pd.read_parquet(ARQUIVOS["mshl"])
     logger.info("Lidos: LT=%s | RD=%s | MSHL=%s", f"{len(lt):,}", f"{len(rd):,}", f"{len(mshl):,}")
 
-    conn = psycopg2.connect(os.environ.get("DATABASE_URL", ""))
+    conn = cnx.conectar()
     try:
         with conn.cursor() as cur:
             garantir_schema(cur, args.schema)
