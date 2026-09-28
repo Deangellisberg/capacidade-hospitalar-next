@@ -153,8 +153,7 @@ CREATE TABLE fato_leitos (
     qt_sus         INTEGER,
     PRIMARY KEY (cnes, codleito, competencia),
     FOREIGN KEY (tp_leito) REFERENCES dom_tipo_leito (tp_leito),
-    FOREIGN KEY (codleito) REFERENCES dom_codigo_leito (codleito),
-    FOREIGN KEY (cnes, competencia) REFERENCES dim_estabelecimento (cnes, competencia)
+    FOREIGN KEY (codleito) REFERENCES dom_codigo_leito (codleito)
 );
 
 COMMENT ON TABLE fato_leitos IS
