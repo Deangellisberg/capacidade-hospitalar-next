@@ -1,0 +1,132 @@
+WITH base AS (
+
+    SELECT
+        competencia,
+        n_aih,
+        cnes,
+        espec,
+        dias_perm
+
+    FROM fato_internacoes
+
+    WHERE ident = '1'
+      AND dias_perm IS NOT NULL
+      AND dias_perm >= 0
+),
+
+medianas AS (
+
+    SELECT
+        competencia,
+        espec,
+
+        PERCENTILE_CONT(0.5) WITHIN GROUP (
+            ORDER BY dias_perm
+        ) AS mediana
+
+    FROM base
+
+    GROUP BY
+        competencia,
+        espec
+),
+
+base_com_mediana AS (
+
+    SELECT
+        b.*,
+        m.mediana,
+
+        ABS(
+            b.dias_perm - m.mediana
+        ) AS desvio_absoluto
+
+    FROM base b
+
+    LEFT JOIN medianas m
+        ON b.competencia = m.competencia
+       AND b.espec = m.espec
+),
+
+mad AS (
+
+    SELECT
+        competencia,
+        espec,
+
+        PERCENTILE_CONT(0.5) WITHIN GROUP (
+            ORDER BY desvio_absoluto
+        ) AS mad
+
+    FROM base_com_mediana
+
+    GROUP BY
+        competencia,
+        espec
+)
+
+SELECT
+    b.competencia,
+    b.n_aih,
+    b.cnes,
+
+    de.nome_estabelecimento,
+    de.municipio,
+
+    b.espec,
+    esp.especialidade,
+
+    b.dias_perm,
+
+    ROUND(b.mediana::NUMERIC, 2)
+        AS mediana_rede,
+
+    ROUND(m.mad::NUMERIC, 2)
+        AS mad_rede,
+
+    ROUND(
+        (
+            0.6745 *
+            (b.dias_perm - b.mediana)
+            / NULLIF(m.mad, 0)
+        )::NUMERIC,
+        2
+    ) AS z_score_modificado,
+
+    CASE
+        WHEN m.mad = 0 THEN 'MAD = 0'
+
+        WHEN (
+            0.6745 *
+            (b.dias_perm - b.mediana)
+            / m.mad
+        ) > 3.5
+            THEN 'Outlier superior'
+
+        WHEN (
+            0.6745 *
+            (b.dias_perm - b.mediana)
+            / m.mad
+        ) < -3.5
+            THEN 'Outlier inferior'
+
+        ELSE 'Dentro do padrão'
+    END AS classificacao
+
+FROM base_com_mediana b
+
+LEFT JOIN mad m
+    ON b.competencia = m.competencia
+   AND b.espec = m.espec
+
+LEFT JOIN dim_estabelecimento de
+    ON b.cnes = de.cnes
+   AND b.competencia = de.competencia
+
+LEFT JOIN dom_especialidade_sih esp
+    ON b.espec = esp.espec
+
+ORDER BY
+    b.competencia,
+    b.espec,
+    z_score_modificado DESC;
