@@ -232,7 +232,12 @@ def garantir_schema(cur, caminho):
     if not caminho.exists():
         raise FileNotFoundError(f"Schema não encontrado: {caminho}")
     logger.info("Criando schema a partir de %s", caminho)
-    cur.execute(caminho.read_text(encoding="utf-8"))
+    try:
+        conteudo_sql = caminho.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        conteudo_sql = caminho.read_text(encoding="latin-1")
+
+    cur.execute(conteudo_sql)
 
 
 def _dominio(cur, tabela, coluna):
