@@ -1,22 +1,22 @@
 import os
 from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Tuple
 
 import psycopg2
 from dotenv import load_dotenv
 
-
 load_dotenv()
 
 
-class conexao(ABC):
-    """Contrato de conexão e operações básicas do banco de dados."""
+class ConexaoBase(ABC):
+    """Contrato abstrato de conexão e operações básicas de banco de dados."""
 
     def __init__(self, **kwargs):
         self.conn = None
         self.kwargs = kwargs or self._default_kwargs()
 
     @staticmethod
-    def _default_kwargs():
+    def _default_kwargs() -> Dict[str, Any]:
         database_url = os.getenv("DATABASE_URL")
         if database_url:
             return {"database_url": database_url}
@@ -40,17 +40,17 @@ class conexao(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def executar(self, query, params=None):
-        """Executa uma instrução SQL e retorna a quantidade de linhas afetadas."""
+    def executar(self, query: str, params: Optional[Tuple] = None) -> int:
+        """Executa uma instrução DML/DDL SQL e faz commit, retornando o número de linhas afetadas."""
         raise NotImplementedError
 
     @abstractmethod
-    def consultar(self, query, params=None):
+    def consultar(self, query: str, params: Optional[Tuple] = None) -> List[Tuple]:
         """Executa uma consulta SQL e retorna todas as linhas do resultado."""
         raise NotImplementedError
 
     @abstractmethod
-    def testar(self):
+    def testar(self) -> bool:
         """Valida se a conexão com o banco está ativa."""
         raise NotImplementedError
 
@@ -63,11 +63,8 @@ class conexao(ABC):
         return False
 
 
-class Conexao(conexao):
-    """Implementação concreta de conexão PostgreSQL com helpers úteis."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+class Conexao(ConexaoBase):
+    """Implementação concreta de conexão PostgreSQL utilizando psycopg2."""
 
     def conectar(self):
         if self.conn is not None and getattr(self.conn, "closed", 0) == 0:
@@ -81,31 +78,31 @@ class Conexao(conexao):
             fechar_conexao(self.conn)
             self.conn = None
 
-    def executar(self, query, params=None):
-        if self.conn is None:
+    def executar(self, query: str, params: Optional[Tuple] = None) -> int:
+        if self.conn is None or self.conn.closed:
+            self.conectar()
+
+        try:
+            with self.conn.cursor() as cursor:
+                cursor.execute(query, params)
+                rowcount = cursor.rowcount
+            self.conn.commit()
+            return rowcount
+        except Exception:
+            self.conn.rollback()
+            raise
+
+    def consultar(self, query: str, params: Optional[Tuple] = None) -> List[Tuple]:
+        if self.conn is None or self.conn.closed:
             self.conectar()
 
         with self.conn.cursor() as cursor:
-            if params is None:
-                cursor.execute(query)
-            else:
-                cursor.execute(query, params)
-            return cursor.rowcount
-
-    def consultar(self, query, params=None):
-        if self.conn is None:
-            self.conectar()
-
-        with self.conn.cursor() as cursor:
-            if params is None:
-                cursor.execute(query)
-            else:
-                cursor.execute(query, params)
+            cursor.execute(query, params)
             return cursor.fetchall()
 
-    def testar(self):
+    def testar(self) -> bool:
         try:
-            if self.conn is None:
+            if self.conn is None or self.conn.closed:
                 self.conectar()
 
             with self.conn.cursor() as cursor:
@@ -114,46 +111,50 @@ class Conexao(conexao):
                 return resultado is not None and resultado[0] == 1
         except Exception:
             return False
-        finally:
-            if self.conn is not None:
-                self.fechar()
 
 
 def conectar(**kwargs):
-	"""Cria uma conexão PostgreSQL usando as variáveis definidas no .env."""
-	database_url = kwargs.pop("database_url", None) or os.getenv("DATABASE_URL")
-	if database_url:
-		return psycopg2.connect(database_url)
+    """Cria e retorna uma conexão psycopg2 pura."""
+    database_url = kwargs.get("database_url") or os.getenv("DATABASE_URL")
+    if database_url:
+        return psycopg2.connect(database_url)
 
-	return psycopg2.connect(
-		host=kwargs.get("host", os.getenv("DB_HOST", "localhost")),
-		port=kwargs.get("port", os.getenv("DB_PORT", "5432")),
-		dbname=kwargs.get("dbname", os.getenv("DB_NAME")),
-		user=kwargs.get("user", os.getenv("DB_USER")),
-		password=kwargs.get("password", os.getenv("DB_PASSWORD")),
-	)
+    params = {
+        "host": kwargs.get("host") or os.getenv("DB_HOST", "localhost"),
+        "port": kwargs.get("port") or os.getenv("DB_PORT", "5432"),
+        "dbname": kwargs.get("dbname") or os.getenv("DB_NAME"),
+        "user": kwargs.get("user") or os.getenv("DB_USER"),
+        "password": kwargs.get("password") or os.getenv("DB_PASSWORD"),
+    }
+    
+    # Remove chaves com valores None para não sobrescrever padrões do psycopg2
+    params = {k: v for k, v in params.items() if v is not None}
+    return psycopg2.connect(**params)
+
 
 def fechar_conexao(conexao):
-    """Fecha a conexão PostgreSQL."""
-    if conexao:
+    """Fecha a conexão PostgreSQL de forma segura."""
+    if conexao and not getattr(conexao, "closed", True):
         conexao.close()
 
-def testar_conexao():
-    """Testa a conexão e fecha os recursos utilizados."""
+
+def testar_conexao() -> bool:
+    """Função utilitária rápida para testar se as credenciais do .env funcionam."""
     try:
         conexao = conectar()
-    except UnicodeDecodeError as e:
-        print("Erro do servidor:", e.object.decode("cp1252", errors="replace"))
-        return False
-
-    try:
         with conexao.cursor() as cursor:
             cursor.execute("SELECT 1")
             resultado = cursor.fetchone()
             return resultado is not None and resultado[0] == 1
+    except UnicodeDecodeError as e:
+        print("Erro do servidor (encoding):", e.object.decode("cp1252", errors="replace"))
+        return False
+    except Exception as e:
+        print("Erro de conexão:", e)
+        return False
     finally:
-        conexao.close()
-
+        if 'conexao' in locals():
+            fechar_conexao(conexao)
 # def garantir_schema(cursor, schema):
 #     """Garante que o schema especificado exista no banco de dados."""
 #     cursor.execute(f"CREATE SCHEMA IF NOT EXISTS {schema};")
