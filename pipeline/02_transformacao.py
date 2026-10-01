@@ -46,7 +46,7 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     # Lendo os arquivos lt.parquet e concatenando em um DataFrame, apenas com as colunas que nos interessam
     # ------------------------------------------------------------------
     
-    lt_colunas = ['COMPETEN', 'CNES', 'CPF_CNPJ', 'CODUFMUN', 'TP_LEITO', 'CODLEITO', 'QT_EXIST', 'QT_SUS']
+    lt_colunas = ['COMPETEN', 'CNES', 'CPF_CNPJ', 'CODUFMUN', 'TP_LEITO', 'CODLEITO', 'QT_EXIST', 'QT_SUS', 'CNPJ_MAN', 'NAT_JUR']
     df_lt = ler_consolidado(arquivos_lt, lt_colunas)
     logger.info(f"Arquivos LT encontrados: {len(arquivos_lt)}")
 
@@ -59,9 +59,24 @@ def consolidar_arquivos_brutos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
         'TP_LEITO': 'string',
         'CODLEITO': 'string',
         'QT_EXIST': 'Int64',
-        'QT_SUS': 'Int64'
+        'QT_SUS': 'Int64',
+        'CNPJ_MAN': 'string',
+        'NAT_JUR': 'Int64'
     })
     df_lt['CPF_CNPJ'] = df_lt['CPF_CNPJ'].replace('00000000000000', pd.NA)
+    df_lt['CNPJ_MAN'] = df_lt['CNPJ_MAN'].replace('00000000000000', pd.NA)
+    
+    '''
+    df_lt['FLAG_CNPJ_NATJUR'] = (
+        (df_lt['CNPJ_MAN'] == '10565000000192') &
+        (df_lt['NAT_JUR'] == 1294)
+    ).astype('Int64')
+    '''
+
+    df_lt['FLAG_CNPJ_NATJUR'] = (
+        (df_lt['CNPJ_MAN'] == '10565000000192')
+    ).astype('Int64')
+
 
     # ------------------------------------------------------------------
     # O código descarta, antes de qualquer carga, todo leito cujo tp_leito não seja 1 (Cirúrgico) ou 2 (Clínico).
