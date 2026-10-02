@@ -214,49 +214,50 @@ python pipeline/03_carga.py
 
 Consulte o arquivo ENV_COPY.txt como referência para as variáveis necessárias ao ambiente local.
 
-## 11. Análises exploratórias - EDA:
+## 11. Análises exploratórias (EDA)
 
-Os notebooks são:
-00_qualidade_dados.ipynb
-01_eda_geral.ipynb
-02_eda_leitos.ipynb
-03_eda_internacoes.ipynb
-04_eda_relacao_leitos_internacoes.ipynb
+Os notebooks ficam na pasta `analises/`:
+
+- `00_qualidade_dados.ipynb`
+- `01_eda_geral.ipynb`
+- `02_eda_leitos.ipynb`
+- `03_eda_internacoes.ipynb`
+- `04_eda_relacao_leitos_internacoes.ipynb`
 
 A organização por notebooks permite documentar as etapas de investigação, incluindo:
 
-o que foi analisado;
-por que determinada análise foi realizada;
-quais problemas ou padrões foram identificados;
-quais conclusões foram obtidas.
-Temas investigados
-Qualidade dos dados
+- o que foi analisado;
+- por que determinada análise foi realizada;
+- quais problemas ou padrões foram identificados;
+- quais conclusões foram obtidas.
 
-Avaliação da consistência, cobertura, nulos, duplicidades e características das fontes utilizadas.
+### Temas investigados
 
-Análise geral:
-Exploração inicial dos dados e identificação das principais características das bases.
+**Qualidade dos dados:** avaliação da consistência, cobertura, nulos, duplicidades e características das fontes utilizadas.
 
-Leitos:
-Análise da capacidade instalada e distribuição dos leitos.
+**Análise geral:** exploração inicial dos dados e identificação das principais características das bases.
 
-Internações:
-Análise das internações, competências, especialidades e tempo de permanência.
+**Leitos:** análise da capacidade instalada e distribuição dos leitos.
 
-Relação entre leitos e internações:
-Investigação da relação entre a capacidade instalada e a utilização observada por meio das internações.
+**Internações:** análise das internações, competências, especialidades e tempo de permanência.
 
-## 12. Consultas análiticas:
+**Relação entre leitos e internações:** investigação da relação entre a capacidade instalada e a utilização observada por meio das internações.
 
-As consultas são:
-01_capacidade_instalada.sql
-02_internacoes.sql
-03_tempo_permanencia.sql
-04_ociosidade.sql
-05_indicador.sql
+---
+
+## 12. Consultas analíticas
+
+As consultas ficam na pasta `sql/02_analises/`:
+
+- `01_capacidade_instalada.sql`
+- `02_internacoes.sql`
+- `03_tempo_permanencia.sql`
+- `04_ociosidade.sql`
+- `05_indicador.sql`
 
 ## 13. Dashboard:
 Em desenvolvimento
+
 
 **Teste de reprodutibilidade**:
 
