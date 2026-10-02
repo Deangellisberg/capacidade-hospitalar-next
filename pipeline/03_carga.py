@@ -161,6 +161,7 @@ def preparar_fato_leitos(df):
         "competencia": _competencia(df["COMPETEN"]),
         "qt_exist": _inteiro(df["QT_EXIST"]),
         "qt_sus": _inteiro(df["QT_SUS"]),
+        "gestao_munic": _inteiro(df["FLAG_CNPJ_NATJUR"])
     })
     out = _sem_chave_nula(out, PK_LEITOS, "fato_leitos")
 
@@ -175,10 +176,11 @@ def preparar_fato_leitos(df):
             tp_leito=("tp_leito", "first"),
             qt_exist=("qt_exist", "sum"),
             qt_sus=("qt_sus", "sum"),
+            gestao_munic=("gestao_munic", "first"),
         )
 
     _checar_tamanhos(out, {"cnes": 7, "codleito": 2, "tp_leito": 2}, "fato_leitos")
-    return out[["cnes", "codleito", "tp_leito", "competencia", "qt_exist", "qt_sus"]].reset_index(drop=True)
+    return out[["cnes", "codleito", "tp_leito", "competencia", "qt_exist", "qt_sus","gestao_munic"]].reset_index(drop=True)
 
 
 def preparar_fato_internacoes(df):
@@ -232,7 +234,14 @@ def garantir_schema(cur, caminho):
     if not caminho.exists():
         raise FileNotFoundError(f"Schema não encontrado: {caminho}")
     logger.info("Criando schema a partir de %s", caminho)
-    cur.execute(caminho.read_text(encoding="utf-8"))
+
+    # Tenta ler o ficheiro em UTF-8 e, em caso de erro, usa Latin-1
+    try:
+        sql_script = caminho.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        sql_script = caminho.read_text(encoding="latin-1")
+
+    cur.execute(sql_script)
 
 
 def _dominio(cur, tabela, coluna):

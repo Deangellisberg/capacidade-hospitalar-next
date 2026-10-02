@@ -151,6 +151,7 @@ CREATE TABLE fato_leitos (
     competencia    CHAR(6)      NOT NULL,   -- formato AAAAMM
     qt_exist       INTEGER,
     qt_sus         INTEGER,
+    gestao_munic   INTEGER,
     PRIMARY KEY (cnes, codleito, competencia),
     FOREIGN KEY (tp_leito) REFERENCES dom_tipo_leito (tp_leito),
     FOREIGN KEY (codleito) REFERENCES dom_codigo_leito (codleito)
