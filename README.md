@@ -124,6 +124,7 @@ capacidade-hospitalar-next/
     └── ata-22-09-26.md                            # registro da reunião de 22/09/2026
 
 ---
+
 ## 7. Como rodar a coleta do zero
 
 ### Pré-requisitos:
@@ -139,6 +140,7 @@ Versões muito recentes do Python, como 3.14+, podem ainda não possuir suporte 
 As dependências Python estão especificadas em:
 requirements.txt
 
+---
 ## 8. Passo a passo:
 
 ```bash
@@ -164,6 +166,7 @@ Isso coleta as três fontes de jan/2024 a dez/2026. Meses que ainda não acontec
 
 **Qual arquivo usar:** dentro de `dados/brutos/`, cada fonte gera dois arquivos — um com o dado bruto (Pernambuco inteiro, ou Brasil inteiro no caso do MSHL) e outro só com Recife. Use sempre o que termina em `_recife.parquet`; o outro existe só como auditoria.
 
+---
 
 ## 9. Como criar o banco de dados:
 
@@ -206,7 +209,7 @@ psql -U postgres -d capacidade_hospitalar -c "\dt"
 
 **Resultado esperado:** 9 tabelas (`lista_hospitais_gestao_propria`, `dim_estabelecimento`, `dom_tipo_leito`, `dom_codigo_leito`, `fato_leitos`, `dom_especialidade_sih`, `dom_tipo_aih`, `fato_internacoes`, `de_para_especialidade_leito`). As tabelas de domínio e o de-para de especialidade já vêm com dado (são referência fixa, não dependem de coleta); as demais ficam vazias até o `03_carga.py` (em desenvolvimento) popular com dado real.
 
-## 9. Carga dos dados:
+## 10. Carga dos dados:
 
 ```bash
 # 1. Depois de criar o banco de dedos e executar o schema, execute:
@@ -218,7 +221,7 @@ python pipeline/03_carga.py
 
 Consulte o arquivo ENV_COPY.txt como referência para as variáveis necessárias ao ambiente local.
 
-## 10. Análises exploratórias - EDA:
+## 11. Análises exploratórias - EDA:
 
 Os notebooks são:
 00_qualidade_dados.ipynb
@@ -250,7 +253,7 @@ Análise das internações, competências, especialidades e tempo de permanênci
 Relação entre leitos e internações:
 Investigação da relação entre a capacidade instalada e a utilização observada por meio das internações.
 
-## 11. Consultas análiticas:
+## 12. Consultas análiticas:
 
 As consultas são:
 01_capacidade_instalada.sql
@@ -259,7 +262,7 @@ As consultas são:
 04_ociosidade.sql
 05_indicador.sql
 
-## 12. Dashboard:
+## 13. Dashboard:
 Em desenvolvimento
 
 **Teste de reprodutibilidade**:
