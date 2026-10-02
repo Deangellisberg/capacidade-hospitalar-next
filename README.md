@@ -14,16 +14,16 @@ A solução é composta por um pipeline de dados, um banco de dados relacional, 
 
 **Integrantes:**
 
-- [Carlos Antônio Gadelha Araújo Júnior]
-- [Deangellis Berg B da Silva]
-- [Gabriela Melo Gonçalves Periera]
-- [Gardênia Guedes Dias]
-- [João Vitor Rodrigues Rochas]
-- [Klebson Stefanini B Garcia]
-- [Luciano Arruda Rodrigues da Silva]
-- [Nathaly Maria Ferreira Novas]
-- [Tais Maia Franca]
-- [Vandelson Elias Monteiro Filho]
+- Carlos Antônio Gadelha Araújo Júnior
+- Deangellis Berg B da Silva
+- Gabriela Melo Gonçalves Periera
+- Gardênia Guedes Dias
+- João Vitor Rodrigues Rochas
+- Klebson Stefanini B Garcia
+- Luciano Arruda Rodrigues da Silva
+- Nathaly Maria Ferreira Novas
+- Tais Maia Franca
+- Vandelson Elias Monteiro Filho
 
 ---
 
@@ -73,57 +73,55 @@ O projeto contempla as seguintes etapas:
 
 ## 6. Estrutura do projeto
 
+```text
 capacidade-hospitalar-next/
-├── README.md
-├── requirements.txt
-├── .gitignore
+├── README.md                                      # documentação principal do projeto
+├── requirements.txt                               # dependências do pipeline e das análises
+├── .gitignore                                     # arquivos e diretórios não versionados
+│
 ├── pipeline/
-│   ├── 01_coleta.py         # coleta CNES-LT, SIH-RD e MSHL; filtra Recife
-│   ├── 02_transformacao.py  # trata tipo, nulo/vazio, consolida os 3 DataFrames  
-│   ├── 03_carga.py  # Carrega os dados transformados nas tabelas do PostgreSQL 
-│   └── conexao.py  # Centraliza a configuração e o gerenciamento da conexão com o banco de dados PostgreSQL
-│       
+│   ├── 01_coleta.py                               # coleta CNES-LT, SIH-RD e MSHL; filtra Recife
+│   ├── 02_transformacao.py                        # trata tipos, nulos e consolida os dados
+│   ├── 03_carga.py                                # carrega os dados transformados no PostgreSQL
+│   └── conexao.py                                 # gerencia a conexão com o PostgreSQL
+│
 ├── sql/
-│   └── 01_schema.sql        # DDL do banco: 9 tabelas, PK/FK, domínios já semeados
-│   └── 02_analises/    # Consultas SQL utilizadas nas análises do projeto
-│       ├── 01_capacidade_instalada.sql # Consultas relacionadas à capacidade instalada de leitos
-│       ├── 02_internacoes.sql  # Consultas relacionadas às internações hospitalares   
-│       ├── 03_tempo_permanencia.sql    # Consultas relacionadas ao tempo de permanência dos pacientes  
-│       ├── 04_ociosidade.sql   # Consultas relacionadas à utilização e ociosidade dos leitos
-│       └── 05_indicador.sql    # Consultas utilizadas para geração dos indicadores do projeto          
+│   ├── 01_schema.sql                              # DDL do banco: tabelas, PK/FK e domínios
+│   └── 02_analises/                               # consultas SQL utilizadas nas análises
+│       ├── 01_capacidade_instalada.sql            # consultas sobre capacidade de leitos
+│       ├── 02_internacoes.sql                     # consultas sobre internações
+│       ├── 03_tempo_permanencia.sql               # consultas sobre tempo de permanência
+│       ├── 04_ociosidade.sql                      # consultas sobre utilização e ociosidade
+│       └── 05_indicador.sql                       # consultas para geração dos indicadores
 │
 ├── dados/
-│   ├── amostra/              # amostra pequena, versionada no Git
-│   └── brutos/                # coleta completa, NÃO versionada (ver .gitignore)
-│       ├── AAAAMM/            # uma pasta por competência (CNES-LT e SIH-RD)
-│       └── complementares/    # MSHL (fonte anual, fora do padrão mensal)
+│   ├── amostra/                                   # amostra pequena para validação do projeto
+│   └── brutos/                                    # dados completos; não versionados no Git
+│       ├── AAAAMM/                                # dados CNES-LT e SIH-RD por competência
+│       └── complementares/                        # dados MSHL, de frequência anual
 │
 ├── analises/
-│   ├── 00_qualidade_dados.ipynb  # Avaliação da qualidade, consistência, cobertura e características dos dados utilizados no projeto
-│   ├── 01_eda_geral.ipynb  # Análise exploratória geral dos dados
-│   ├── 02_eda_leitos.ipynb  # Análise exploratória da capacidade e distribuição dos leitos
-│   ├── 03_eda_internacoes.ipynb  # Análise exploratória das internações e suas características
-│   └── 04_eda_relacao_leitos_internacoes.ipynb  # Análise da relação entre capacidade instalada e internações     
+│   ├── 00_qualidade_dados.ipynb                   # avaliação da qualidade e cobertura dos dados
+│   ├── 01_eda_geral.ipynb                         # análise exploratória geral dos dados
+│   ├── 02_eda_leitos.ipynb                        # análise exploratória dos leitos
+│   ├── 03_eda_internacoes.ipynb                   # análise exploratória das internações
+│   └── 04_eda_relacao_leitos_internacoes.ipynb    # relação entre leitos e internações
 │
 ├── dashboard/
-│   ├── esqueleto-painel.html   # Protótipo inicial da estrutura visual do dashboard
-│   └── ideia-de-visual-painel.md   # Documentação da proposta de visualização e organização do painel       
+│   ├── esqueleto-painel.html                      # protótipo inicial do dashboard
+│   └── ideia-de-visual-painel.md                  # proposta visual e organização do painel
 │
 ├── pitch/
-│   └── slides/  #Slides utilizados na apresentação do projeto
+│   └── slides/                                   # slides utilizados na apresentação do projeto
 │
 └── docs/
-    ├── regra_dias_internacao_mes.md    # regra de cálculo de pacientes-dia/ocupação
-    ├── fonte_dados/
-    │   ├── SCNES_DOMINIOS.XLS    # dicionário de domínios do SCNES 
-    │   ├── dicionario_campos_p5.docx    # documentação detalhada dos campos do pipeline P5  
-    │   ├── dicionario_campos_p5_simplificado.docx    # versão simplificada para consulta rápida
-    │   ├── dominio_codeleito_tpleito_cnes.md    # explicação dos códigos de leitos no CNES 
-    │   ├── dicionario_dominios_sih_rd.md    # domínios ESPEC/IDENT do SIH-RD, reconstruídos de fontes DATASUS
-    │   └── leitos_dominio.csv    # tabela de referência dos tipos de leitos 
-    └── justificativa_mudanca_basedados/
-        ├── documentacao_fonte_hospitais_leitos_ms.md    # detalha a coleta e filtros aplicados aos dados de hospitais/leitos do MS
-        └── justificativa_troca_fonte_cnes_st.md    # justificativa da troca da fonte CNES-ST 
+    ├── de-para/                                  # mapeamentos e correspondências do projeto
+    ├── fonte_dados/                              # dicionários, domínios e documentação das fontes
+    ├── justificativa_mudanca_basedados/          # justificativas sobre fontes e banco de dados
+    ├── ata-16-09-26.md                            # registro da reunião de 16/09/2026
+    ├── ata-17-09-26.md                            # registro da reunião de 17/09/2026
+    ├── ata-21-09-26.md                            # registro da reunião de 21/09/2026
+    └── ata-22-09-26.md                            # registro da reunião de 22/09/2026
 
 ---
 ## 7. Como rodar a coleta do zero
@@ -262,6 +260,7 @@ As consultas são:
 05_indicador.sql
 
 ## 12. Dashboard:
+Em desenvolvimento
 
 **Teste de reprodutibilidade**:
 
