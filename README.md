@@ -70,7 +70,6 @@ O projeto contempla as seguintes etapas:
 9. apresentação dos resultados.
 
 ---
-
 ## 6. Estrutura do projeto
 
 ```text
@@ -112,36 +111,37 @@ capacidade-hospitalar-next/
 │   └── ideia-de-visual-painel.md                  # proposta visual e organização do painel
 │
 ├── pitch/
-│   └── slides/                                   # slides utilizados na apresentação do projeto
+│   └── slides/                                    # slides utilizados na apresentação do projeto
 │
 └── docs/
-    ├── de-para/                                  # mapeamentos e correspondências do projeto
-    ├── fonte_dados/                              # dicionários, domínios e documentação das fontes
-    ├── justificativa_mudanca_basedados/          # justificativas sobre fontes e banco de dados
+    ├── de-para/                                   # mapeamentos e correspondências do projeto
+    ├── fonte_dados/                               # dicionários, domínios e documentação das fontes
+    ├── justificativa_mudanca_basedados/           # justificativas sobre fontes e banco de dados
     ├── ata-16-09-26.md                            # registro da reunião de 16/09/2026
     ├── ata-17-09-26.md                            # registro da reunião de 17/09/2026
     ├── ata-21-09-26.md                            # registro da reunião de 21/09/2026
     └── ata-22-09-26.md                            # registro da reunião de 22/09/2026
+```
 
 ---
 
 ## 7. Como rodar a coleta do zero
 
-### Pré-requisitos:
+### Pré-requisitos
 
-Python 3.13;
-PostgreSQL;
-psql disponível no terminal;
-acesso à internet para a etapa de coleta;
-acesso às fontes públicas utilizadas pelo projeto.
+- Python 3.13;
+- PostgreSQL;
+- `psql` disponível no terminal;
+- acesso à internet para a etapa de coleta;
+- acesso às fontes públicas utilizadas pelo projeto.
 
-Versões muito recentes do Python, como 3.14+, podem ainda não possuir suporte completo das bibliotecas utilizadas.
+> Versões muito recentes do Python, como 3.14+, podem ainda não possuir suporte completo das bibliotecas utilizadas.
 
-As dependências Python estão especificadas em:
-requirements.txt
+As dependências Python estão especificadas em `requirements.txt`.
 
 ---
-## 8. Passo a passo:
+
+## 8. Passo a passo
 
 ```bash
 # 1. Clone o repositório
@@ -159,23 +159,21 @@ pip install -r requirements.txt
 # 4. Rode a coleta e a transformação
 python pipeline/01_coleta.py
 python pipeline/02_transformacao.py
+```
 
 Isso coleta as três fontes de jan/2024 a dez/2026. Meses que ainda não aconteceram (ex.: os últimos meses de 2026, dependendo de quando você rodar) aparecem como "indisponível" no log — é esperado, não é erro. Rodar de novo não duplica nem refaz o que já foi coletado (a coleta é idempotente).
 
-**Resultado esperado:** ao final, o log mostra um resumo com quantas competências deram certo, quantas foram puladas (já existiam), quantas ainda não estavam disponíveis na fonte, e quantas falharam de verdade. Se "Erros" vier zero, a coleta está completa.
+**Resultado esperado:** ao final, o log mostra um resumo com quantas competências deram certo, quantas foram puladas (já existiam), quantas ainda não estavam disponíveis na fonte e quantas falharam de verdade. Se "Erros" vier zero, a coleta está completa.
 
 **Qual arquivo usar:** dentro de `dados/brutos/`, cada fonte gera dois arquivos — um com o dado bruto (Pernambuco inteiro, ou Brasil inteiro no caso do MSHL) e outro só com Recife. Use sempre o que termina em `_recife.parquet`; o outro existe só como auditoria.
 
 ---
 
-## 9. Como criar o banco de dados:
+## 9. Como criar o banco de dados
 
-O projeto utiliza PostgreSQL como banco de dados relacional.
+O projeto utiliza PostgreSQL como banco de dados relacional. O modelo foi desenvolvido considerando as relações entre estabelecimentos, leitos e internações.
 
-O modelo foi desenvolvido considerando as relações entre estabelecimentos, leitos e internações.
-
-O schema está disponível em:
-sql/01_schema.sql
+O schema está disponível em `sql/01_schema.sql`.
 
 ### Pré-requisitos
 
@@ -187,28 +185,23 @@ sql/01_schema.sql
 # 1. Crie o banco do projeto, já forçando UTF-8 explicitamente
 psql -U postgres -c "CREATE DATABASE capacidade_hospitalar WITH ENCODING 'UTF8' LC_COLLATE='Portuguese_Brazil.1252' LC_CTYPE='Portuguese_Brazil.1252' TEMPLATE=template0;"
 
-#Caso o ambiente não possua os locales indicados, pode ser utilizada a versão:
-#A utilização de UTF-8 evita problemas de codificação dos textos, especialmente para caracteres acentuados.
+# Caso o ambiente não possua os locales indicados, use a versão simplificada:
 psql -U postgres -c "CREATE DATABASE capacidade_hospitalar WITH ENCODING 'UTF8' TEMPLATE=template0;"
 
 # 2. Rode o schema (cria as 9 tabelas, com PK/FK e os domínios já semeados)
 psql -U postgres -d capacidade_hospitalar -f sql/01_schema.sql --set ON_ERROR_STOP=1
 
-#A opção (faz com que o psql interrompa a execução caso ocorra um erro no script.):
---set ON_ERROR_STOP=1
-
 # 3. Confirme que as 9 tabelas foram criadas
 psql -U postgres -d capacidade_hospitalar -c "\dt"
 ```
 
-**Sobre o `WITH ENCODING 'UTF8' ... TEMPLATE=template0`:** sem isso, o banco pode herdar um encoding diferente de UTF-8 (dependendo da configuração regional do Windows), fazendo acento sair quebrado em qualquer consulta depois. `TEMPLATE=template0` garante que a criação não herda nada de um template padrão já "contaminado". Se der erro reclamando do `LC_COLLATE`/`LC_CTYPE` (alguns Windows não têm esse locale instalado), usa a versão mais simples: `CREATE DATABASE capacidade_hospitalar WITH ENCODING 'UTF8' TEMPLATE=template0;`.
+**Sobre o `WITH ENCODING 'UTF8' ... TEMPLATE=template0`:** sem isso, o banco pode herdar um encoding diferente de UTF-8 (dependendo da configuração regional do Windows), fazendo acento sair quebrado em qualquer consulta depois. `TEMPLATE=template0` garante que a criação não herda nada de um template padrão já "contaminado". Se der erro reclamando do `LC_COLLATE`/`LC_CTYPE` (alguns Windows não têm esse locale instalado), use a versão simplificada do comando.
 
-**Se você já criou o banco sem esses parâmetros e está vendo acento quebrado:** confirme o encoding atual com `psql -U postgres -d capacidade_hospitalar -c "SHOW server_encoding;"`. `server_encoding` só é definido na criação do banco — não tem como corrigir depois sem recriar. Apague o banco (`DROP DATABASE capacidade_hospitalar;`) e recrie com o comando acima.
+**Se você já criou o banco sem esses parâmetros e está vendo acento quebrado:** confirme o encoding atual com `psql -U postgres -d capacidade_hospitalar -c "SHOW server_encoding;"`. O `server_encoding` só é definido na criação do banco — não tem como corrigir depois sem recriar. Apague o banco (`DROP DATABASE capacidade_hospitalar;`) e recrie com o comando acima.
 
 **Sobre o `--set ON_ERROR_STOP=1`:** sem essa flag, o `psql -f` não para em erro — ele segue rodando o resto do script mesmo se uma linha falhar, mascarando o problema. Sempre use essa flag ao rodar scripts SQL neste projeto.
 
-**Resultado esperado:** 9 tabelas (`lista_hospitais_gestao_propria`, `dim_estabelecimento`, `dom_tipo_leito`, `dom_codigo_leito`, `fato_leitos`, `dom_especialidade_sih`, `dom_tipo_aih`, `fato_internacoes`, `de_para_especialidade_leito`). As tabelas de domínio e o de-para de especialidade já vêm com dado (são referência fixa, não dependem de coleta); as demais ficam vazias até o `03_carga.py` (em desenvolvimento) popular com dado real.
-
+**Resultado esperado:** 9 tabelas (`lista_hospitais_gestao_propria`, `dim_estabelecimento`, `dom_tipo_leito`, `dom_codigo_leito`, `fato_leitos`, `dom_especialidade_sih`, `dom_tipo_aih`, `fato_internacoes`, `de_para_especialidade_leito`). As tabelas de domínio e o de-para de especialidade já vêm com dado (são referência fixa, não dependem de coleta); as demais ficam vazias até o `03_carga.py` popular com dado real.
 ## 10. Carga dos dados:
 
 ```bash
