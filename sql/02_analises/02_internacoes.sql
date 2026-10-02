@@ -1,88 +1,102 @@
-WITH internacoes AS (
+WITH leitos AS (
     SELECT
-        competencia,
-        cnes,
-        SUM(dias_perm) AS dias_permanencia
-    FROM fato_internacoes
-    WHERE ident = '1'
-    GROUP BY
-        competencia,
-        cnes
+        fl.competencia,
+        fl.cnes,
+        fl.gestao_munic,
+        fl.tp_leito,
+        SUM(fl.qt_sus) AS leitos_sus
+    FROM fato_leitos fl
+    WHERE fl.tp_leito IN ('1', '2') -- 1 Cirúrgico, 2 Clínico
+    GROUP by
+    	fl.gestao_munic,
+        fl.competencia,
+        fl.cnes,
+        fl.tp_leito
 ),
 
-leitos AS (
+internacoes AS (
     SELECT
-        competencia,
-        cnes,
-        SUM(qt_sus) AS leitos_sus
-    FROM fato_leitos
-    WHERE tp_leito IN ('1', '2')
+        fi.competencia,
+        fi.cnes,
+        COALESCE(dp.tp_leito, '6') AS tp_leito,
+        COUNT(fi.n_aih) AS total_internacoes,
+        SUM(fi.dias_perm) AS dias_permanencia
+    FROM fato_internacoes fi
+    LEFT JOIN de_para_especialidade_leito dp
+        ON fi.espec = dp.espec
+    WHERE fi.ident = '1'
     GROUP BY
-        competencia,
-        cnes
+        fi.competencia,
+        fi.cnes,
+        COALESCE(dp.tp_leito, '6')
 )
 
 SELECT
-    i.competencia,
-    i.cnes,
-    de.nome_estabelecimento,
-    de.municipio,
-
+    l.competencia,
+    l.cnes,
+    dim.nome_estabelecimento as unidade,
+    dim.municipio,
+    dtl.categoria AS tipo_leito,
+    
     l.leitos_sus,
+    COALESCE(i.total_internacoes, 0) AS total_internacoes,
+    COALESCE(i.dias_permanencia, 0) AS dias_permanencia,
 
-    -- número de dias da competência
-    EXTRACT(
-        DAY FROM (
-            DATE_TRUNC(
-                'month',
-                TO_DATE(i.competencia, 'YYYYMM')
-            ) + INTERVAL '1 month - 1 day'
-        )
-    ) AS dias_mes,
-
-    -- capacidade estimada em leito-dias
-    l.leitos_sus *
-    EXTRACT(
-        DAY FROM (
-            DATE_TRUNC(
-                'month',
-                TO_DATE(i.competencia, 'YYYYMM')
-            ) + INTERVAL '1 month - 1 day'
-        )
-    ) AS capacidade_leito_dias,
-
-    i.dias_permanencia,
-
-    -- taxa de ocupação
+    -- Giro de Leito
     ROUND(
-        100.0 * i.dias_permanencia /
+        1.0 * COALESCE(i.total_internacoes, 0) / NULLIF(l.leitos_sus, 0),
+        2
+    ) AS internacoes_por_leito_disponivel,
+
+    -- 1. Taxa de Ocupação Real (%)
+    ROUND(
+        100.0 * COALESCE(i.dias_permanencia, 0) /
         NULLIF(
-            l.leitos_sus *
-            EXTRACT(
+            l.leitos_sus * EXTRACT(
                 DAY FROM (
-                    DATE_TRUNC(
-                        'month',
-                        TO_DATE(i.competencia, 'YYYYMM')
-                    ) + INTERVAL '1 month - 1 day'
+                    DATE_TRUNC('month', TO_DATE(l.competencia, 'YYYYMM')) + INTERVAL '1 month - 1 day'
                 )
             ),
             0
         ),
         2
-    ) AS taxa_ocupacao
+    ) AS taxa_ocupacao_real,
 
-FROM internacoes i
+    -- 2. Taxa de Ocupação Ajustada (%) - Cap de 100%
+    LEAST(
+        ROUND(
+            100.0 * COALESCE(i.dias_permanencia, 0) /
+            NULLIF(
+                l.leitos_sus * EXTRACT(
+                    DAY FROM (
+                        DATE_TRUNC('month', TO_DATE(l.competencia, 'YYYYMM')) + INTERVAL '1 month - 1 day'
+                    )
+                ),
+                0
+            ),
+            2
+        ),
+        100.00
+    ) AS taxa_ocupacao_ajustada
 
-LEFT JOIN leitos l
-    ON i.cnes = l.cnes
-   AND i.competencia = l.competencia
+FROM leitos l
 
-LEFT JOIN dim_estabelecimento de
-    ON i.cnes = de.cnes
-   AND i.competencia = de.competencia
+LEFT JOIN internacoes i
+    ON l.cnes = i.cnes
+   AND l.competencia = i.competencia
+   AND l.tp_leito = i.tp_leito
 
-WHERE l.leitos_sus > 0
+LEFT JOIN dom_tipo_leito dtl
+    ON l.tp_leito = dtl.tp_leito
+
+LEFT JOIN dim_estabelecimento dim
+    ON l.cnes = dim.cnes
+   AND l.competencia = dim.competencia
+   
+-- Filtro para garantir apenas unidades com nome não nulo
+WHERE l.leitos_sus > 0 and dim.nome_estabelecimento IS NOT null and l.gestao_munic = 1
 
 ORDER BY
-    i.competencia,
-    taxa_ocupacao DESC;
+    l.competencia,
+    l.cnes,
+    l.tp_leito;

@@ -1,127 +1,108 @@
-WITH leitos AS (
-
+WITH leitos_agregados AS (
+    -- Agrupa os leitos SUS por hospital, competência e tipo de leito (1=Cirúrgico, 2=Clínico)
     SELECT
-        competencia,
-        cnes,
-        SUM(qt_sus) AS leitos_sus
-
-    FROM fato_leitos
-
-    WHERE tp_leito IN ('1', '2')
-
+        l.competencia,
+        l.gestao_munic,
+        l.cnes,
+        l.tp_leito,
+        SUM(l.qt_sus)::INTEGER AS leitos_sus_cadastrados,
+        -- Calcula o número de dias no mês a partir da competência (AAAAMM)
+        EXTRACT(DAY FROM (
+            TO_DATE(l.competencia, 'YYYYMM') + INTERVAL '1 month' - INTERVAL '1 day'
+        ))::INTEGER AS dias_no_mes
+    FROM fato_leitos l
+    WHERE l.qt_sus > 0
+      AND l.tp_leito IN ('1', '2') -- Recorte cirúrgico e clínico
     GROUP BY
-        competencia,
-        cnes
+        l.competencia,
+        l.cnes,
+        l.gestao_munic,
+        l.tp_leito
 ),
 
-internacoes AS (
-
+internacoes_agregadas AS (
+    -- Agrupa as internações (ident='1') pelo tipo de leito equivalente via de-para
     SELECT
-        competencia,
-        cnes,
-
-        COUNT(*) AS qtd_internacoes,
-
-        SUM(dias_perm) AS dias_permanencia
-
-    FROM fato_internacoes
-
-    WHERE ident = '1'
-      AND dias_perm IS NOT NULL
-      AND dias_perm >= 0
-
+        i.competencia,
+        i.cnes,
+        dp.tp_leito,
+        COUNT(DISTINCT i.n_aih)::INTEGER AS total_internacoes_sih,
+        COALESCE(SUM(i.dias_perm), 0)::INTEGER AS total_dias_ocupados
+    FROM fato_internacoes i
+    INNER JOIN de_para_especialidade_leito dp
+        ON i.espec = dp.espec
+    WHERE i.ident = '1'
+      AND i.dias_perm IS NOT NULL
     GROUP BY
-        competencia,
-        cnes
+        i.competencia,
+        i.cnes,
+        dp.tp_leito
 ),
 
-base AS (
-
+calculo_ocupacao AS (
     SELECT
         l.competencia,
         l.cnes,
+        dim.nome_estabelecimento AS unidade,
+        dim.municipio,
+        dtl.categoria AS tipo_leito,
+        
+        l.leitos_sus_cadastrados,
+        l.dias_no_mes,
+        (l.leitos_sus_cadastrados * l.dias_no_mes) AS leitos_dia_disponiveis,
+        
+        COALESCE(i.total_internacoes_sih, 0) AS total_internacoes_sih,
+        COALESCE(i.total_dias_ocupados, 0) AS total_dias_ocupados,
 
-        l.leitos_sus,
-
-        COALESCE(i.qtd_internacoes, 0)
-            AS qtd_internacoes,
-
-        COALESCE(i.dias_permanencia, 0)
-            AS dias_permanencia,
-
-        EXTRACT(
-            DAY FROM (
-                DATE_TRUNC(
-                    'month',
-                    TO_DATE(l.competencia, 'YYYYMM')
-                ) + INTERVAL '1 month - 1 day'
-            )
-        ) AS dias_mes
-
-    FROM leitos l
-
-    LEFT JOIN internacoes i
-        ON l.cnes = i.cnes
-       AND l.competencia = i.competencia
-),
-
-indicadores AS (
-
-    SELECT
-        b.*,
-
-        b.leitos_sus * b.dias_mes
-            AS capacidade_leito_dias,
-
+        -- Calculo percentual da Taxa de Ocupação Hospitalar
         ROUND(
-            100.0 * b.dias_permanencia /
-            NULLIF(
-                b.leitos_sus * b.dias_mes,
-                0
-            ),
+            100.0 * COALESCE(i.total_dias_ocupados, 0) / 
+            NULLIF(l.leitos_sus_cadastrados * l.dias_no_mes, 0),
             2
-        ) AS taxa_ocupacao
+        ) AS taxa_ocupacao_pct
 
-    FROM base b
+    FROM leitos_agregados l
+
+    INNER JOIN dim_estabelecimento dim
+        ON l.cnes = dim.cnes 
+       AND l.competencia = dim.competencia
+
+    LEFT JOIN dom_tipo_leito dtl
+        ON l.tp_leito = dtl.tp_leito
+
+    LEFT JOIN internacoes_agregadas i
+        ON l.cnes = i.cnes 
+       AND l.competencia = i.competencia
+       AND l.tp_leito = i.tp_leito
+
+    WHERE dim.nome_estabelecimento IS NOT null AND l.gestao_munic = 1
 )
 
 SELECT
-    i.competencia,
-    i.cnes,
+    competencia,
+    cnes,
+    unidade,
+    municipio,
+    tipo_leito,
+    leitos_sus_cadastrados,
+    total_internacoes_sih,
+    total_dias_ocupados,
+    leitos_dia_disponiveis,
+    taxa_ocupacao_pct,
 
-    de.nome_estabelecimento,
-    de.municipio,
+    -- Classificação conforme as faixas de ocupação estabelecidas
+    CASE 
+        WHEN taxa_ocupacao_pct < 70.0 THEN 'Ociosidade Severa (Abaixo de 70%)'
+        WHEN taxa_ocupacao_pct BETWEEN 70.0 AND 74.99 THEN 'Ociosidade (70% a 75%)'
+        WHEN taxa_ocupacao_pct BETWEEN 75.0 AND 85.00 THEN 'Saudável (75% a 85%)'
+        WHEN taxa_ocupacao_pct > 85.0 THEN 'Risco de Sobrecarga (Acima de 85%)'
+        ELSE 'Sem Produção / Dado Indisponível'
+    END AS faixa_ocupacao
 
-    i.leitos_sus,
-    i.dias_mes,
+FROM calculo_ocupacao
 
-    i.capacidade_leito_dias,
-
-    i.qtd_internacoes,
-    i.dias_permanencia,
-
-    i.capacidade_leito_dias
-        - i.dias_permanencia
-        AS leito_dias_nao_utilizados,
-
-    i.taxa_ocupacao,
-
-    CASE
-        WHEN i.taxa_ocupacao < 70
-            THEN 'Abaixo de 70%'
-
-        WHEN i.taxa_ocupacao <= 85
-            THEN 'Saudável'
-
-        ELSE 'Sobrecarga'
-    END AS faixa_leitura
-
-FROM indicadores i
-
-LEFT JOIN dim_estabelecimento de
-    ON i.cnes = de.cnes
-   AND i.competencia = de.competencia
-
-ORDER BY
-    i.competencia,
-    i.taxa_ocupacao ASC;
+ORDER by
+	competencia,
+	cnes,
+    taxa_ocupacao_pct ASC,
+    leitos_sus_cadastrados DESC;
