@@ -1,20 +1,117 @@
-## Estrutura do projeto (coleta de dados e banco)
+# Projeto P5 — Capacidade Hospitalar
 
-```
+## 1. Sobre o projeto
+
+O Projeto P5 tem como objetivo analisar a **capacidade hospitalar e a utilização de leitos no município do Recife**, utilizando dados públicos de saúde disponibilizados pelo Ministério da Saúde.
+
+O projeto integra dados de diferentes fontes públicas para construir uma base estruturada que permita analisar a oferta de leitos, as internações realizadas, o tempo de permanência dos pacientes e indicadores relacionados à utilização da capacidade hospitalar.
+
+A solução é composta por um pipeline de dados, um banco de dados relacional, análises exploratórias, consultas analíticas e materiais para construção do dashboard e apresentação do projeto.
+
+---
+
+## 2. Equipe
+
+**Integrantes:**
+
+- [Carlos Antônio Gadelha Araújo Júnior]
+- [Deangellis Berg B da Silva]
+- [Gabriela Melo Gonçalves Periera]
+- [Gardênia Guedes Dias]
+- [João Vitor Rodrigues Rochas]
+- [Klebson Stefanini B Garcia]
+- [Luciano Arruda Rodrigues da Silva]
+- [Nathaly Maria Ferreira Novas]
+- [Tais Maia Franca]
+- [Vandelson Elias Monteiro Filho]
+
+---
+
+## 3. Tema
+
+**Capacidade hospitalar no município do Recife.**
+
+O projeto utiliza dados públicos para investigar a relação entre a capacidade instalada de leitos e sua utilização, considerando informações sobre estabelecimentos de saúde, leitos e internações.
+
+---
+
+## 4. Problema
+
+A disponibilidade e a utilização adequada dos leitos hospitalares são aspectos importantes para o planejamento e a gestão dos serviços de saúde.
+
+O projeto busca organizar e relacionar diferentes fontes públicas de dados para permitir uma análise estruturada da capacidade hospitalar do Recife, considerando:
+
+- quantidade de leitos disponíveis;
+- distribuição dos leitos por tipo e especialidade;
+- quantidade de internações;
+- tempo de permanência;
+- utilização dos leitos;
+- possíveis períodos ou situações de ociosidade;
+- relação entre capacidade instalada e demanda observada.
+
+A integração dessas informações permite construir uma base analítica para apoiar a investigação das perguntas definidas no projeto.
+
+---
+
+## 5. Objetivo
+
+Construir um pipeline reprodutível para **coletar, transformar e carregar dados públicos de saúde**, disponibilizando uma base relacional que permita realizar análises sobre a capacidade hospitalar do município do Recife.
+
+O projeto contempla as seguintes etapas:
+
+1. coleta dos dados nas fontes públicas;
+2. tratamento e padronização dos dados;
+3. consolidação dos arquivos;
+4. modelagem do banco de dados;
+5. carga dos dados no PostgreSQL;
+6. análise exploratória dos dados;
+7. execução de consultas analíticas;
+8. preparação das informações para o dashboard;
+9. apresentação dos resultados.
+
+---
+
+## 6. Estrutura do projeto
+
 capacidade-hospitalar-next/
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
 ├── pipeline/
 │   ├── 01_coleta.py         # coleta CNES-LT, SIH-RD e MSHL; filtra Recife
-│   └── 02_transformacao.py  # trata tipo, nulo/vazio, consolida os 3 DataFrames
+│   ├── 02_transformacao.py  # trata tipo, nulo/vazio, consolida os 3 DataFrames  
+│   ├── 03_carga.py  # Carrega os dados transformados nas tabelas do PostgreSQL 
+│   └── conexao.py  # Centraliza a configuração e o gerenciamento da conexão com o banco de dados PostgreSQL
+│       
 ├── sql/
 │   └── 01_schema.sql        # DDL do banco: 9 tabelas, PK/FK, domínios já semeados
+│   └── 02_analises/    # Consultas SQL utilizadas nas análises do projeto
+│       ├── 01_capacidade_instalada.sql # Consultas relacionadas à capacidade instalada de leitos
+│       ├── 02_internacoes.sql  # Consultas relacionadas às internações hospitalares   
+│       ├── 03_tempo_permanencia.sql    # Consultas relacionadas ao tempo de permanência dos pacientes  
+│       ├── 04_ociosidade.sql   # Consultas relacionadas à utilização e ociosidade dos leitos
+│       └── 05_indicador.sql    # Consultas utilizadas para geração dos indicadores do projeto          
+│
 ├── dados/
 │   ├── amostra/              # amostra pequena, versionada no Git
 │   └── brutos/                # coleta completa, NÃO versionada (ver .gitignore)
 │       ├── AAAAMM/            # uma pasta por competência (CNES-LT e SIH-RD)
 │       └── complementares/    # MSHL (fonte anual, fora do padrão mensal)
+│
+├── analises/
+│   ├── 00_qualidade_dados.ipynb  # Avaliação da qualidade, consistência, cobertura e características dos dados utilizados no projeto
+│   ├── 01_eda_geral.ipynb  # Análise exploratória geral dos dados
+│   ├── 02_eda_leitos.ipynb  # Análise exploratória da capacidade e distribuição dos leitos
+│   ├── 03_eda_internacoes.ipynb  # Análise exploratória das internações e suas características
+│   └── 04_eda_relacao_leitos_internacoes.ipynb  # Análise da relação entre capacidade instalada e internações     
+│
+├── dashboard/
+│   ├── esqueleto-painel.html   # Protótipo inicial da estrutura visual do dashboard
+│   └── ideia-de-visual-painel.md   # Documentação da proposta de visualização e organização do painel       
+│
+├── pitch/
+│   └── slides/  #Slides utilizados na apresentação do projeto
+│
 └── docs/
     ├── regra_dias_internacao_mes.md    # regra de cálculo de pacientes-dia/ocupação
     ├── fonte_dados/
@@ -28,15 +125,23 @@ capacidade-hospitalar-next/
         ├── documentacao_fonte_hospitais_leitos_ms.md    # detalha a coleta e filtros aplicados aos dados de hospitais/leitos do MS
         └── justificativa_troca_fonte_cnes_st.md    # justificativa da troca da fonte CNES-ST 
 
-```
-## Como rodar a coleta do zero
+---
+## 7. Como rodar a coleta do zero
 
-### Pré-requisitos
+### Pré-requisitos:
 
-- Python 3.13 (versões muito recentes, como 3.14+, ainda não têm suporte completo das bibliotecas usadas aqui)
-- Acesso à internet (a coleta baixa direto de fontes públicas: DATASUS e Ministério da Saúde)
+Python 3.13;
+PostgreSQL;
+psql disponível no terminal;
+acesso à internet para a etapa de coleta;
+acesso às fontes públicas utilizadas pelo projeto.
 
-### Passo a passo
+Versões muito recentes do Python, como 3.14+, podem ainda não possuir suporte completo das bibliotecas utilizadas.
+
+As dependências Python estão especificadas em:
+requirements.txt
+
+## 8. Passo a passo:
 
 ```bash
 # 1. Clone o repositório
@@ -54,7 +159,6 @@ pip install -r requirements.txt
 # 4. Rode a coleta e a transformação
 python pipeline/01_coleta.py
 python pipeline/02_transformacao.py
-```
 
 Isso coleta as três fontes de jan/2024 a dez/2026. Meses que ainda não aconteceram (ex.: os últimos meses de 2026, dependendo de quando você rodar) aparecem como "indisponível" no log — é esperado, não é erro. Rodar de novo não duplica nem refaz o que já foi coletado (a coleta é idempotente).
 
@@ -62,7 +166,15 @@ Isso coleta as três fontes de jan/2024 a dez/2026. Meses que ainda não acontec
 
 **Qual arquivo usar:** dentro de `dados/brutos/`, cada fonte gera dois arquivos — um com o dado bruto (Pernambuco inteiro, ou Brasil inteiro no caso do MSHL) e outro só com Recife. Use sempre o que termina em `_recife.parquet`; o outro existe só como auditoria.
 
-## Como criar o banco de dados
+
+## 9. Como criar o banco de dados:
+
+O projeto utiliza PostgreSQL como banco de dados relacional.
+
+O modelo foi desenvolvido considerando as relações entre estabelecimentos, leitos e internações.
+
+O schema está disponível em:
+sql/01_schema.sql
 
 ### Pré-requisitos
 
@@ -74,8 +186,15 @@ Isso coleta as três fontes de jan/2024 a dez/2026. Meses que ainda não acontec
 # 1. Crie o banco do projeto, já forçando UTF-8 explicitamente
 psql -U postgres -c "CREATE DATABASE capacidade_hospitalar WITH ENCODING 'UTF8' LC_COLLATE='Portuguese_Brazil.1252' LC_CTYPE='Portuguese_Brazil.1252' TEMPLATE=template0;"
 
+#Caso o ambiente não possua os locales indicados, pode ser utilizada a versão:
+#A utilização de UTF-8 evita problemas de codificação dos textos, especialmente para caracteres acentuados.
+psql -U postgres -c "CREATE DATABASE capacidade_hospitalar WITH ENCODING 'UTF8' TEMPLATE=template0;"
+
 # 2. Rode o schema (cria as 9 tabelas, com PK/FK e os domínios já semeados)
 psql -U postgres -d capacidade_hospitalar -f sql/01_schema.sql --set ON_ERROR_STOP=1
+
+#A opção (faz com que o psql interrompa a execução caso ocorra um erro no script.):
+--set ON_ERROR_STOP=1
 
 # 3. Confirme que as 9 tabelas foram criadas
 psql -U postgres -d capacidade_hospitalar -c "\dt"
@@ -89,7 +208,89 @@ psql -U postgres -d capacidade_hospitalar -c "\dt"
 
 **Resultado esperado:** 9 tabelas (`lista_hospitais_gestao_propria`, `dim_estabelecimento`, `dom_tipo_leito`, `dom_codigo_leito`, `fato_leitos`, `dom_especialidade_sih`, `dom_tipo_aih`, `fato_internacoes`, `de_para_especialidade_leito`). As tabelas de domínio e o de-para de especialidade já vêm com dado (são referência fixa, não dependem de coleta); as demais ficam vazias até o `03_carga.py` (em desenvolvimento) popular com dado real.
 
-**Teste de reprodutibilidade** (recomendado antes de qualquer entrega): apague e recrie o banco do zero, seguindo só os 3 comandos acima — se rodar sem nenhum erro, o schema está reprodutível.
+## 9. Carga dos dados:
+
+```bash
+# 1. Depois de criar o banco de dedos e executar o schema, execute:
+python pipeline/03_carga.py
+
+```
+
+**A configuração da conexão utiliza as variáveis de ambiente definidas para o projeto**.
+
+Consulte o arquivo ENV_COPY.txt como referência para as variáveis necessárias ao ambiente local.
+
+## 10. Análises exploratórias - EDA:
+
+Os notebooks são:
+00_qualidade_dados.ipynb
+01_eda_geral.ipynb
+02_eda_leitos.ipynb
+03_eda_internacoes.ipynb
+04_eda_relacao_leitos_internacoes.ipynb
+
+A organização por notebooks permite documentar as etapas de investigação, incluindo:
+
+o que foi analisado;
+por que determinada análise foi realizada;
+quais problemas ou padrões foram identificados;
+quais conclusões foram obtidas.
+Temas investigados
+Qualidade dos dados
+
+Avaliação da consistência, cobertura, nulos, duplicidades e características das fontes utilizadas.
+
+Análise geral:
+Exploração inicial dos dados e identificação das principais características das bases.
+
+Leitos:
+Análise da capacidade instalada e distribuição dos leitos.
+
+Internações:
+Análise das internações, competências, especialidades e tempo de permanência.
+
+Relação entre leitos e internações:
+Investigação da relação entre a capacidade instalada e a utilização observada por meio das internações.
+
+## 11. Consultas análiticas:
+
+As consultas são:
+01_capacidade_instalada.sql
+02_internacoes.sql
+03_tempo_permanencia.sql
+04_ociosidade.sql
+05_indicador.sql
+
+## 12. Dashboard:
+
+**Teste de reprodutibilidade**:
+
+```bash
+# Criar ambiente
+py -3.13 -m venv .venv
+
+# Ativar ambiente
+source .venv/Scripts/activate
+
+# Instalar dependências
+pip install -r requirements.txt
+
+# Coletar dados
+python pipeline/01_coleta.py
+
+# Transformar dados
+python pipeline/02_transformacao.py
+
+# Criar banco
+psql -U postgres -c "CREATE DATABASE capacidade_hospitalar WITH ENCODING 'UTF8' TEMPLATE=template0;"
+
+# Criar estrutura
+psql -U postgres -d capacidade_hospitalar -f sql/01_schema.sql --set ON_ERROR_STOP=1
+
+# Carregar dados
+python pipeline/03_carga.py
+```
+
 
 ## Fontes e dados coletados
 
