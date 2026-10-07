@@ -1,9 +1,4 @@
--- 01_capacidade_instalada.sql
--- Capacidade cadastrada (CNES) por unidade, tipo de leito e mês (início e fim do mês).
--- Recortes: tp_leito IN ('1','2'); gestao_munic = 1; 01/06/2024 a 31/05/2026 (24 meses).
--- Datas vêm do início/fim do mês e das datas de entrada/saída; a competência aparece só como coluna de referência e não gera datas.
--- Sem filtro de leitos_sus / leitos_existentes: a base fica completa.
-
+CREATE OR REPLACE view vw_01_capacidade_instalada_2 AS
 WITH periodo AS (
     SELECT DATE '2024-06-01' AS data_ini,
            DATE '2026-05-31' AS data_fim

@@ -1,11 +1,4 @@
--- 04_ociosidade.sql  (vw_04, granularidade mensal)
--- Cadastro (CNES) x produção (SIH), por unidade, tipo de leito e mês (início ao fim do mês).
--- Duas ocupações, mesmo numerador (dias ocupados do início ao fim do mês, pelas datas de entrada/saída):
---   taxa_ocupacao_cadastrada_pct = dias / (leitos existentes x dias do mês)
---   taxa_ocupacao_pct            = dias / (leitos SUS x dias do mês)
--- Recortes: tp_leito IN ('1','2'); gestao_munic = 1; 01/06/2024 a 31/05/2026 (24 meses).
--- Datas vêm do início/fim do mês e das datas de entrada/saída; a competência aparece só como coluna de referência e não gera datas.
-
+CREATE VIEW vw_02_internacoes_2 AS
 WITH periodo AS (
     SELECT DATE '2024-06-01' AS data_ini,
            DATE '2026-05-31' AS data_fim
@@ -112,69 +105,32 @@ dias_mes AS (
         ON b.dt_inter <= c.fim_mes
        AND b.dt_inter + b.dias_ocupados > c.inicio_mes
     GROUP BY c.inicio_mes, b.cnes, b.tp_leito
-),
-
-mensal AS (
-    SELECT
-        l.competencia,
-        l.mes,
-        l.inicio_mes,
-        l.fim_mes,
-        m.primeira_entrada,
-        m.ultima_entrada,
-        m.primeira_saida,
-        m.ultima_saida,
-        l.cnes,
-        l.tp_leito,
-        l.leitos_existentes,
-        l.leitos_sus,
-        l.leitos_existentes * l.dias_no_mes     AS leitos_dia_cadastrados,
-        l.leitos_sus * l.dias_no_mes            AS leitos_dia_disponiveis,
-        COALESCE(a.total_internacoes, 0)        AS total_internacoes,
-        COALESCE(m.dias_ocupados, 0)            AS dias_ocupados,
-        100.0 * COALESCE(m.dias_ocupados, 0) / NULLIF(l.leitos_existentes * l.dias_no_mes, 0) AS taxa_cadastrada,
-        100.0 * COALESCE(m.dias_ocupados, 0) / NULLIF(l.leitos_sus * l.dias_no_mes, 0)        AS taxa_sus
-    FROM leitos l
-    LEFT JOIN admissoes a
-        ON l.cnes = a.cnes AND l.inicio_mes = a.inicio_mes AND l.tp_leito = a.tp_leito
-    LEFT JOIN dias_mes m
-        ON l.cnes = m.cnes AND l.inicio_mes = m.inicio_mes AND l.tp_leito = m.tp_leito
 )
 
 SELECT
-    mn.competencia,
-    mn.mes,
-    mn.inicio_mes,
-    mn.fim_mes,
-    mn.primeira_entrada,
-    mn.ultima_entrada,
-    mn.primeira_saida,
-    mn.ultima_saida,
-    mn.cnes,
-    COALESCE(u.nome_estabelecimento, 'CNES: ' || mn.cnes) AS unidade,
-    mn.tp_leito,
-    COALESCE(t.categoria, 'Não especificado')             AS tipo_leito,
-    mn.leitos_existentes,
-    mn.leitos_sus,
-    mn.leitos_dia_cadastrados,
-    mn.leitos_dia_disponiveis,
-    mn.total_internacoes,
-    mn.dias_ocupados,
-    ROUND(mn.taxa_cadastrada, 2)                          AS taxa_ocupacao_cadastrada_pct,
-    ROUND(mn.taxa_sus, 2)                                 AS taxa_ocupacao_pct,
-    CASE
-        WHEN mn.leitos_sus = 0                 THEN 'Sem leito SUS no mês'
-        WHEN mn.dias_ocupados = 0              THEN 'Sem Produção Registrada'
-        WHEN mn.taxa_sus < 70                  THEN 'Ociosidade Severa (Abaixo de 70%)'
-        WHEN mn.taxa_sus < 75                  THEN 'Ociosidade (70% a 75%)'
-        WHEN mn.taxa_sus <= 85                 THEN 'Saudável (75% a 85%)'
-        ELSE 'Sobrecarga operacional (Acima de 85%)'
-    END AS faixa_ocupacao,
-    CASE 
-	    WHEN competencia = MAX(competencia) OVER ()
-    	THEN 'Sim' ELSE 'Não'
-    END AS competencia_atual -- 'Sim' só nas linhas do último mês
-FROM mensal mn
-LEFT JOIN unidades u ON mn.cnes = u.cnes
-LEFT JOIN tipos t    ON mn.tp_leito = t.tp_leito
-ORDER BY mn.inicio_mes, unidade, mn.tp_leito;
+    l.competencia,
+    l.mes,
+    l.inicio_mes,
+    l.fim_mes,
+    m.primeira_entrada,
+    m.ultima_entrada,
+    m.primeira_saida,
+    m.ultima_saida,
+    l.cnes,
+    COALESCE(u.nome_estabelecimento, 'CNES: ' || l.cnes) AS unidade,
+    l.tp_leito,
+    COALESCE(t.categoria, 'Não especificado')            AS tipo_leito,
+    l.leitos_sus,
+    l.leitos_sus * l.dias_no_mes                         AS leitos_dia_disponiveis,
+    COALESCE(a.total_internacoes, 0)                     AS total_internacoes,
+    COALESCE(m.dias_ocupados, 0)                         AS dias_ocupados,
+    ROUND(1.0 * COALESCE(a.total_internacoes, 0) / NULLIF(l.leitos_sus, 0), 2)               AS internacoes_por_leito,
+    ROUND(100.0 * COALESCE(m.dias_ocupados, 0) / NULLIF(l.leitos_sus * l.dias_no_mes, 0), 2) AS taxa_ocupacao_pct
+FROM leitos l
+LEFT JOIN admissoes a
+    ON l.cnes = a.cnes AND l.inicio_mes = a.inicio_mes AND l.tp_leito = a.tp_leito
+LEFT JOIN dias_mes m
+    ON l.cnes = m.cnes AND l.inicio_mes = m.inicio_mes AND l.tp_leito = m.tp_leito
+LEFT JOIN unidades u ON l.cnes = u.cnes
+LEFT JOIN tipos t    ON l.tp_leito = t.tp_leito
+ORDER BY l.inicio_mes, unidade, l.tp_leito;

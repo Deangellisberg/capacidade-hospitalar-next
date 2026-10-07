@@ -1,11 +1,4 @@
--- 04_ociosidade.sql  (vw_04, granularidade mensal)
--- Cadastro (CNES) x produção (SIH), por unidade, tipo de leito e mês (início ao fim do mês).
--- Duas ocupações, mesmo numerador (dias ocupados do início ao fim do mês, pelas datas de entrada/saída):
---   taxa_ocupacao_cadastrada_pct = dias / (leitos existentes x dias do mês)
---   taxa_ocupacao_pct            = dias / (leitos SUS x dias do mês)
--- Recortes: tp_leito IN ('1','2'); gestao_munic = 1; 01/06/2024 a 31/05/2026 (24 meses).
--- Datas vêm do início/fim do mês e das datas de entrada/saída; a competência aparece só como coluna de referência e não gera datas.
-
+CREATE OR REPLACE view vw_04_ociosidade_2 AS
 WITH periodo AS (
     SELECT DATE '2024-06-01' AS data_ini,
            DATE '2026-05-31' AS data_fim
