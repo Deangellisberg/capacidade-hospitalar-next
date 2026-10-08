@@ -85,13 +85,20 @@ capacidade-hospitalar-next/
 │   └── conexao.py                                 # gerencia a conexão com o PostgreSQL
 │
 ├── sql/
-│   ├── 01_schema.sql                              # DDL do banco: tabelas, PK/FK e domínios
+│   └── 01_Schema/                                 
+│       └── 01_schema.sql                          # DDL do banco: tabelas, PK/FK e domínios
 │   └── 02_analises/                               # consultas SQL utilizadas nas análises
 │       ├── 01_capacidade_instalada.sql            # consultas sobre capacidade de leitos
 │       ├── 02_internacoes.sql                     # consultas sobre internações
 │       ├── 03_tempo_permanencia.sql               # consultas sobre tempo de permanência
 │       ├── 04_ociosidade.sql                      # consultas sobre utilização e ociosidade
-│       └── 05_indicador.sql                       # consultas para geração dos indicadores
+│       └── 05_diagnostico.sql                     # consultas para geração dos indicadores
+│   └── 03_views/                                  # views SQL utilizadas no dashboard
+│       ├── vw_01_capacidade_instalada_2.sql       # view sobre capacidade de leitos
+│       ├── vw_02_internacoes_2.sql                # view sobre internações
+│       ├── vw_03_tempo_permanencia_2.sql          # view sobre tempo de permanência
+│       ├── vw_04_ociosidade_2.sql                 # view sobre utilização e ociosidade
+│       └── vw_05_diagnostico_2.sql                # view para geração dos indicadores
 │
 ├── dados/
 │   ├── amostra/                                   # amostra pequena para validação do projeto
@@ -107,6 +114,7 @@ capacidade-hospitalar-next/
 │   └── 04_eda_relacao_leitos_internacoes.ipynb    # relação entre leitos e internações
 │
 ├── dashboard/
+│   ├── prints/                                    # prints das páginas do dashboard
 │   ├── esqueleto-painel.html                      # protótipo inicial do dashboard
 │   └── ideia-de-visual-painel.md                  # proposta visual e organização do painel
 │
@@ -202,7 +210,8 @@ psql -U postgres -d capacidade_hospitalar -c "\dt"
 **Sobre o `--set ON_ERROR_STOP=1`:** sem essa flag, o `psql -f` não para em erro — ele segue rodando o resto do script mesmo se uma linha falhar, mascarando o problema. Sempre use essa flag ao rodar scripts SQL neste projeto.
 
 **Resultado esperado:** 9 tabelas (`lista_hospitais_gestao_propria`, `dim_estabelecimento`, `dom_tipo_leito`, `dom_codigo_leito`, `fato_leitos`, `dom_especialidade_sih`, `dom_tipo_aih`, `fato_internacoes`, `de_para_especialidade_leito`). As tabelas de domínio e o de-para de especialidade já vêm com dado (são referência fixa, não dependem de coleta); as demais ficam vazias até o `03_carga.py` popular com dado real.
-## 10. Carga dos dados:
+
+## 10. Carga dos dados
 
 ```bash
 # 1. Depois de criar o banco de dedos e executar o schema, execute:
@@ -253,11 +262,34 @@ As consultas ficam na pasta `sql/02_analises/`:
 - `02_internacoes.sql`
 - `03_tempo_permanencia.sql`
 - `04_ociosidade.sql`
-- `05_indicador.sql`
+- `05_diagnostico.sql`
 
-## 13. Dashboard:
-Em desenvolvimento
+As views ficam na pasta `sql/03_views/`:
 
+- `vw_01_capacidade_instalada_2.sql`
+- `vw_02_internacoes_2.sql`
+- `vw_03_tempo_permanencia_2.sql`
+- `vw_04_ociosidade_2.sql`
+- `vw_05_diagnostico_2.sql`
+
+
+## 13. Dashboard
+
+[Link do painel](https://datastudio.google.com/s/sKtHR1N7BMw)
+
+Prints das páginas
+
+**Página 1: Capacidade instalada**:
+![Capacidade instalada](./dashboard/prints/p1.png)
+
+**Página 2: Utilização dos leitos**:
+![Utilização dos leitos](./dashboard/prints/p2.png)
+
+**Página 3: Tempo médio de permanência**:
+![Tempo médio de permanência](./dashboard/prints/p3.png)
+
+**Página 4: Ociosidade invisível**:
+![Ociosidade invisível](./dashboard/prints/p4.png)
 
 **Teste de reprodutibilidade**:
 
