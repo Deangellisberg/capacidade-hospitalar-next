@@ -1,11 +1,4 @@
--- 03_tempo_permanencia.sql
--- Tempo médio de permanência por unidade e tipo de leito, comparado com a rede municipal.
--- Base: AIH com entrada no mês (dt_inter), em unidades/meses com cadastro municipal (mesma população das demais consultas).
--- "Rede" = unidades de gestão municipal presentes nesta consulta.
--- Classificação: z = (média do hospital - média da rede) / (desvio da rede / raiz(n internações do hospital)).
--- Recortes: tp_leito IN ('1','2'); gestao_munic = 1; 01/06/2024 a 31/05/2026 (24 meses).
--- Datas vêm do início/fim do mês e das datas de entrada/saída; a competência aparece só como coluna de referência e não gera datas.
-
+CREATE VIEW vw_03_tempo_permanencia_2 AS
 WITH periodo AS (
     SELECT DATE '2024-06-01' AS data_ini,
            DATE '2026-05-31' AS data_fim
