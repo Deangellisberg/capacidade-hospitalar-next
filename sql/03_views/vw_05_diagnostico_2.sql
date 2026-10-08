@@ -1,4 +1,4 @@
-CREATE OR REPLACE view vw_04_ociosidade_2 AS
+CREATE OR REPLACE view vw_05_diagnostico_2 AS
 SELECT fi.cnes,
        u.nome_estabelecimento,
        COUNT(DISTINCT (fi.n_aih, fi.cnes, fi.dt_inter)) FILTER (WHERE dp.tp_leito IN ('1','2')) AS aih_no_recorte,

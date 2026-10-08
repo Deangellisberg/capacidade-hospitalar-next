@@ -25,6 +25,10 @@ A solução é composta por um pipeline de dados, um banco de dados relacional, 
 - Tais Maia Franca
 - Vandelson Elias Monteiro Filho
 
+**Mentor:**
+
+- Lucas Gabriel
+
 ---
 
 ## 3. Tema
@@ -181,7 +185,7 @@ Isso coleta as três fontes de jan/2024 a dez/2026. Meses que ainda não acontec
 
 O projeto utiliza PostgreSQL como banco de dados relacional. O modelo foi desenvolvido considerando as relações entre estabelecimentos, leitos e internações.
 
-O schema está disponível em `sql/01_schema.sql`.
+O schema está disponível em `sql/01_Schema/01_schema.sql`.
 
 ### Pré-requisitos
 
@@ -197,7 +201,7 @@ psql -U postgres -c "CREATE DATABASE capacidade_hospitalar WITH ENCODING 'UTF8' 
 psql -U postgres -c "CREATE DATABASE capacidade_hospitalar WITH ENCODING 'UTF8' TEMPLATE=template0;"
 
 # 2. Rode o schema (cria as 9 tabelas, com PK/FK e os domínios já semeados)
-psql -U postgres -d capacidade_hospitalar -f sql/01_schema.sql --set ON_ERROR_STOP=1
+psql -U postgres -d capacidade_hospitalar -f sql/01_Schema/01_schema.sql --set ON_ERROR_STOP=1
 
 # 3. Confirme que as 9 tabelas foram criadas
 psql -U postgres -d capacidade_hospitalar -c "\dt"
