@@ -16,7 +16,7 @@ A solução é composta por um pipeline de dados, um banco de dados relacional, 
 
 - Carlos Antônio Gadelha Araújo Júnior
 - Deangellis Berg B da Silva
-- Gabriela Melo Gonçalves Periera
+- Gabriela Melo Gonçalves Pereira
 - Gardênia Guedes Dias
 - João Vitor Rodrigues Rochas
 - Klebson Stefanini B Garcia
@@ -24,6 +24,7 @@ A solução é composta por um pipeline de dados, um banco de dados relacional, 
 - Nathaly Maria Ferreira Novas
 - Tais Maia Franca
 - Vandelson Elias Monteiro Filho
+  Mentor: Lucas Gabriel
 
 ---
 
